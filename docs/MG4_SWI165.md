@@ -48,7 +48,7 @@ screen such as MG4Dash never show the stock card, so they don't need it.
 | Launcher CarPlay-card shortcut | Not needed with MG4Dash; card not measured |
 | Wi-Fi audio instead of Bluetooth | Music plays on the car, mg4.65, 2026-11-01. Opt-in under Audio routing; rest of the checklist still to run. See [MG4_SWI165_WIFI_AUDIO_PLAN.md](./MG4_SWI165_WIFI_AUDIO_PLAN.md) |
 | Battery and range to the iPhone | Confirmed on the car, 2026-11-01 |
-| Switch to Bluetooth Music on connect | Not working (mg4.65): A2DP check fixed, but the car rejects `requestBtAudioFocus` (15) and stays on radio (source 3). Needs the SWI165 MediaService transaction codes |
+| Switch to Bluetooth Music on connect | mg4.65 stayed on radio: command 15 does not exist on SWI165. Fixed in mg4.66 to send `play` (2), which requests the car’s Bluetooth source. Awaiting a car test |
 
 ## Signing note
 

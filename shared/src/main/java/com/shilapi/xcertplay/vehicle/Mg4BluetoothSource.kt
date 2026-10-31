@@ -12,10 +12,15 @@ import com.evsuite.hardware.saic.SaicAidl
  * Moves the car's audio source to Bluetooth Music, as the SAIC launcher's music card does.
  *
  * Upstream called `SaicMediaPlayer.connectBluetooth` / `switchToBluetooth`, which were never
- * published in the MG4ABRP submodule, so the public tree did not compile. This is the same
- * sequence against the SAIC media service: `requestBtAudioFocus` moves the source, `play`
- * resumes the transport. Transaction codes come from `IBtMusicBinderInterface` as used by the
- * SWI68 launcher (same media SDK as SWI165).
+ * published in the MG4ABRP submodule, so the public tree did not compile.
+ *
+ * Read from the SWI165 MediaService APK (`MediaService_eh32_aus_local_P`):
+ * `IBtMusicBinderInterface` has transactions 1-14 only, so the SWI68 launcher's
+ * `requestBtAudioFocus` (15) does not exist here and always failed. `play` (2) is the switch:
+ * `BtMusicPlayerBinder.play` -> `BtMusicMediaPlayer.play` posts message 2 to
+ * `A2dpAudioFocusHandler`, which requests audio focus with `key_car_source_type=5` (the car's
+ * Bluetooth source) and starts A2DP rendering, then tells the phone to play. It returns false
+ * when AVRCP is not connected, Android Auto is connected, or Bluetooth has transiently lost focus.
  *
  * The bind is done here rather than through EVHardware's `SaicService` so its outcome can be
  * reported in DiPlay's own diagnostic log: on SWI165 the first build waited three seconds and
@@ -35,15 +40,16 @@ object Mg4BluetoothSource {
     private const val TX_CURRENT_SOURCE = 0x9
     private const val TX_CURRENT_PLAYER = 0x1
     private const val TX_BT_PLAY = 2
-    private const val TX_BT_REQUEST_FOCUS = 15
+    private const val TX_BT_PLAY_STATE = 9
+    private const val TX_BT_STATE = 11
 
     /** Result of one switch attempt, worded for the diagnostic log. */
     enum class Result(val logText: String) {
-        SWITCHED("focus and play accepted"),
+        SWITCHED("play (2) accepted"),
         BIND_REFUSED("bindService refused (service missing or not allowed)"),
         NOT_CONNECTED("bind requested, service not connected yet"),
-        FOCUS_FAILED("requestBtAudioFocus (15) failed"),
-        PLAY_FAILED("focus accepted, play (2) failed"),
+        PLAY_REJECTED("play (2) returned false (AVRCP down, Android Auto connected, or Bluetooth focus lost)"),
+        PLAY_FAILED("play (2) call failed"),
     }
 
     /** Read-only: which source owns the car's audio. Diagnostics only. */
@@ -146,8 +152,18 @@ object Mg4BluetoothSource {
     fun switchToBluetooth(): Result {
         val service = binder?.takeIf { it.isBinderAlive }
             ?: return if (bindRequested && !bindAccepted) Result.BIND_REFUSED else Result.NOT_CONNECTED
-        if (!SaicAidl.callVoid(service, DESC_BT, TX_BT_REQUEST_FOCUS)) return Result.FOCUS_FAILED
-        if (!SaicAidl.callVoid(service, DESC_BT, TX_BT_PLAY)) return Result.PLAY_FAILED
-        return Result.SWITCHED
+        return when (SaicAidl.callBoolean(service, DESC_BT, TX_BT_PLAY)) {
+            true -> Result.SWITCHED
+            false -> Result.PLAY_REJECTED
+            null -> Result.PLAY_FAILED
+        }
+    }
+
+    /** Bluetooth music state from the media service, e.g. `bt=2 play=3`, for the diagnostic log. */
+    fun bluetoothStateDescription(): String {
+        val service = binder?.takeIf { it.isBinderAlive } ?: return "bt service not connected"
+        val bt = SaicAidl.callInt(service, DESC_BT, TX_BT_STATE)?.toString() ?: "?"
+        val play = SaicAidl.callInt(service, DESC_BT, TX_BT_PLAY_STATE)?.toString() ?: "?"
+        return "bt state=$bt play state=$play"
     }
 }

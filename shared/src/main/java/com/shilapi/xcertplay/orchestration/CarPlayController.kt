@@ -1318,6 +1318,7 @@ class CarPlayController(
         }
         debugLog("car source: BT music service ${Mg4BluetoothSource.connect(appContext)}")
         debugLog("car source: before switch ${Mg4BluetoothSource.currentSourceDescription()}")
+        debugLog("car source: ${Mg4BluetoothSource.bluetoothStateDescription()}")
         var last = Mg4BluetoothSource.Result.NOT_CONNECTED
         repeat(SOURCE_SWITCH_ATTEMPTS) { attempt ->
             if (closed || phase != Phase.WIRELESS) return
