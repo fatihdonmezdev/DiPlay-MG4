@@ -1,5 +1,10 @@
 # MG4 SWI165 firmware
 
+Development car: MG4, Australian build, firmware `SWI165-29176-1100R11`, Android 9
+(`mt2712_saic_eh32`, build 10749), 1920x720 panel with a 1778x720 app area at
+160 dpi. It runs MG4Dash as the home screen and MG4Control. ADB over USB has never
+worked on this car, so builds are installed from a USB stick.
+
 DiPlay reads `ro.build.mt2712.version` at start-up and picks a firmware profile
 (`common/.../Mg4FirmwareProfile.kt`). Screen size, signing and install steps are the
 same as SWI69: platform key, `pm install -r -f -d -t` from `/data/local/tmp`.
@@ -33,6 +38,15 @@ target is not created on this firmware. Measuring it needs a screenshot of the s
 home screen (`adb exec-out screencap -p > launcher.png`); add the rectangle to the
 SWI165 branch of `Mg4FirmwareProfile.forFirmware`. Cars running a replacement home
 screen such as MG4Dash never show the stock card, so they don't need it.
+
+## Status
+
+| Item | State |
+|---|---|
+| Firmware detection and profile | Done, unit tested |
+| Overlay video renderer | Built, awaiting a car test |
+| Launcher CarPlay-card shortcut | Not needed with MG4Dash; card not measured |
+| Vehicle data (battery, range, gear) | Supported by EVHardware on SWI165, not yet checked in DiPlay |
 
 ## Signing note
 

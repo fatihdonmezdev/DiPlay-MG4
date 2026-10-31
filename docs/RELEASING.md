@@ -3,6 +3,11 @@
 Everything needed to go from a clean checkout to a signed APK on the car and a
 published release. Written for the MG4 Comfort / SWI69 / Android 9 target.
 
+> **This fork (SWI165):** the short Mac build path, including where to get the
+> identity files and how to install from a USB stick without ADB, is in the
+> [README](../README.md#building-on-a-mac). Releases and OTA below describe the
+> upstream repository; this fork doesn't publish releases.
+
 ## Repository layout
 
 | Path | What it is |
