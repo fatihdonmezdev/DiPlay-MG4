@@ -38,6 +38,7 @@ object AirPlayPersistence {
     private const val KEY_UI_SCALE_PERCENT = "ui_scale_percent"
     private const val KEY_HEVC_ENABLED = "hevc_enabled"
     private const val KEY_HEVC_SOFTWARE_DECODER = "hevc_software_decoder"
+    private const val KEY_SURFACE_VIDEO = "surface_video_renderer"
     private const val KEY_ADVANCED_AUDIO_CHANNEL_MAPPING = "advanced_audio_channel_mapping"
     private const val KEY_AUDIO_FOCUS_ENABLED = "audio_focus_enabled"
     private const val KEY_MEDIA_AUDIO_CHANNEL = "media_audio_channel"
@@ -123,6 +124,18 @@ object AirPlayPersistence {
     fun saveHevcSoftwareDecoderEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_HEVC_SOFTWARE_DECODER, enabled)
+            .apply()
+    }
+
+    /** Null until the user picks a renderer; callers then use the firmware profile's default. */
+    fun loadSurfaceVideoRenderer(context: Context): Boolean? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return if (prefs.contains(KEY_SURFACE_VIDEO)) prefs.getBoolean(KEY_SURFACE_VIDEO, false) else null
+    }
+
+    fun saveSurfaceVideoRenderer(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_SURFACE_VIDEO, enabled)
             .apply()
     }
 

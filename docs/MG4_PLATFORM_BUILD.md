@@ -9,7 +9,9 @@ Platform signing under `android.uid.system` is required for the application to a
 The MG4 mobile build contains `Mg4LauncherOverlayService`. After the head unit
 boots, the existing `BootReceiver` starts this service independently of the user's
 CarPlay auto-start preference, but only when the detected
-`ro.build.mt2712.version` starts with `SWI69`.
+firmware profile (`Mg4FirmwareProfile`) has a measured CarPlay card. Today that is
+SWI69 only; SWI165 is detected but its card is not yet measured, see
+[`MG4_SWI165.md`](./MG4_SWI165.md).
 
 While `com.saicmotor.launcher` is visible, the service places a transparent touch
 target over only the Apple CarPlay half of the stock 1920x720 launcher card. It

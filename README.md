@@ -4,7 +4,8 @@ Wireless CarPlay for the MG4 head unit, maintained by
 [@fatihdonmezdev](https://github.com/fatihdonmezdev).
 
 Tested target: **MG4 Comfort, SWI69 firmware, Android 9, AUTUS SAIC MT2712**.
-Other MG4 firmware may work; SWI69 is the one that is tested. Package:
+SWI165 has its own firmware profile (launcher package and video renderer); see
+[docs/MG4_SWI165.md](docs/MG4_SWI165.md). Other MG4 firmware may work. Package:
 `com.shihab.diplay`.
 
 [Releases](https://github.com/fatihdonmezdev/DiPlay-MG4/releases) ·
@@ -70,6 +71,7 @@ FairPlay receiver. Netflix does not support AirPlay.
 - [Building, installing and releasing](docs/RELEASING.md) — start here
 - [OTA updates](docs/OTA.md)
 - [Platform-signed builds](docs/MG4_PLATFORM_BUILD.md)
+- [SWI165 firmware profile](docs/MG4_SWI165.md)
 - [Installing over ADB](docs/MG4_PLATFORM_INSTALL.md)
 - [Release notes](CHANGELOG.md)
 

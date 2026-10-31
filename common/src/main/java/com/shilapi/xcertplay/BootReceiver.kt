@@ -13,7 +13,7 @@ class BootReceiver : BroadcastReceiver() {
 
         // The MG4 build is platform-signed and runs as android.uid.system. Keep the
         // stock launcher visible while replacing only its Apple CarPlay click action.
-        if (Process.myUid() == Process.SYSTEM_UID && Mg4LauncherOverlaySupport.isDetectedSwi69()) {
+        if (Process.myUid() == Process.SYSTEM_UID && Mg4LauncherOverlaySupport.isSupported()) {
             try {
                 context.startService(Intent(context, Mg4LauncherOverlayService::class.java))
             } catch (error: RuntimeException) {

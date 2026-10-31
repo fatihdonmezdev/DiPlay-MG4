@@ -14,15 +14,9 @@ import android.view.View
 import android.view.WindowManager
 
 internal object Mg4LauncherOverlaySupport {
-    fun isDetectedSwi69(): Boolean = readSystemProperty("ro.build.mt2712.version")
-        .orEmpty()
-        .startsWith("SWI69")
-
-    private fun readSystemProperty(key: String): String? = runCatching {
-        val properties = Class.forName("android.os.SystemProperties")
-        val get = properties.getMethod("get", String::class.java, String::class.java)
-        (get.invoke(null, key, "") as? String)?.takeIf(String::isNotBlank)
-    }.getOrNull()
+    /** True when this firmware has a measured stock-launcher CarPlay card to cover. */
+    fun isSupported(profile: Mg4FirmwareProfile = Mg4FirmwareProfile.detect()): Boolean =
+        profile.stockLauncherPackage != null && profile.launcherCarPlayCard != null
 }
 
 /**
@@ -35,6 +29,8 @@ class Mg4LauncherOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var windowManager: WindowManager
     private lateinit var touchTarget: View
+    private lateinit var launcherPackage: String
+    private lateinit var card: Mg4FirmwareProfile.LauncherCard
     private var attached = false
 
     private val monitor = object : Runnable {
@@ -53,10 +49,15 @@ class Mg4LauncherOverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        if (Process.myUid() != Process.SYSTEM_UID || !Mg4LauncherOverlaySupport.isDetectedSwi69()) {
+        val profile = Mg4FirmwareProfile.detect()
+        val stockLauncher = profile.stockLauncherPackage
+        val stockCard = profile.launcherCarPlayCard
+        if (Process.myUid() != Process.SYSTEM_UID || stockLauncher == null || stockCard == null) {
             stopSelf()
             return
         }
+        launcherPackage = stockLauncher
+        card = stockCard
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         touchTarget = View(this).apply {
             setBackgroundColor(0x00000000)
@@ -72,12 +73,12 @@ class Mg4LauncherOverlayService : Service() {
     private fun isStockLauncherVisible(): Boolean {
         val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val top = manager.getRunningTasks(1).firstOrNull()?.topActivity
-        return top?.packageName == STOCK_LAUNCHER_PACKAGE
+        return top?.packageName == launcherPackage
     }
 
     private fun layoutParams() = WindowManager.LayoutParams(
-        TOUCH_WIDTH,
-        TOUCH_HEIGHT,
+        card.width,
+        card.height,
         WindowManager.LayoutParams.TYPE_SYSTEM_ERROR,
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -85,10 +86,8 @@ class Mg4LauncherOverlayService : Service() {
         PixelFormat.TRANSLUCENT,
     ).apply {
         gravity = Gravity.TOP or Gravity.START
-        // MG4 Comfort 1920x720: stock card is x=1468..1878, y=95..689.
-        // Window coordinates start after the 142 px launcher navigation rail.
-        x = 1326
-        y = 88
+        x = card.x
+        y = card.y
     }
 
     private fun openDiPlay() {
@@ -109,10 +108,6 @@ class Mg4LauncherOverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private companion object {
-        const val STOCK_LAUNCHER_PACKAGE = "com.saicmotor.launcher"
         const val POLL_INTERVAL_MS = 400L
-        const val TOUCH_WIDTH = 410
-        const val TOUCH_HEIGHT = 298
-
     }
 }

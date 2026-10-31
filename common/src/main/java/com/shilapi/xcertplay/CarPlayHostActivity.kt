@@ -27,6 +27,8 @@ import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import android.view.TextureView
 import android.view.KeyEvent
 import android.view.View
@@ -240,7 +242,8 @@ class CarPlayHostActivity : ComponentActivity() {
             }
         }
 
-    private var videoView: TextureView? = null
+    private var videoView: View? = null
+    private var surfaceVideo = false
     private var gestureOverlay: View? = null
     private var settingsMenu: View? = null
     private var mfiTargetGroup: RadioGroup? = null
@@ -390,6 +393,30 @@ class CarPlayHostActivity : ComponentActivity() {
         }
 
         override fun onSurfaceTextureUpdated(texture: SurfaceTexture) = Unit
+    }
+
+    // Hardware overlay path, as used by the stock AllGo CarPlay app. The holder owns the
+    // Surface, so it is never released here.
+    private val surfaceCallback = object : SurfaceHolder.Callback {
+        override fun surfaceCreated(holder: SurfaceHolder) {
+            val surface = holder.surface
+            currentSurface = surface
+            currentSurfaceTexture = null
+            appendLog("Overlay surface created")
+            attachSurface(surface)
+        }
+
+        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+            scheduleDisplaySize(width, height)
+        }
+
+        override fun surfaceDestroyed(holder: SurfaceHolder) {
+            val surface = currentSurface ?: return
+            sink?.clearSurface(SCREEN_TYPE_MAIN, surface)
+            sink?.clearSurface(SCREEN_TYPE_ALT, surface)
+            currentSurface = null
+            appendLog("Overlay surface destroyed")
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -774,7 +801,7 @@ class CarPlayHostActivity : ComponentActivity() {
         currentSurface?.let { surface ->
             sink?.clearSurface(SCREEN_TYPE_MAIN, surface)
             sink?.clearSurface(SCREEN_TYPE_ALT, surface)
-            surface.release()
+            if (currentSurfaceTexture != null) surface.release()
         }
         currentSurface = null
         currentSurfaceTexture = null
@@ -786,10 +813,20 @@ class CarPlayHostActivity : ComponentActivity() {
 
     private fun buildContentView(): View {
         val root = FrameLayout(this).apply { setBackgroundColor(Color.rgb(12, 17, 27)) }
-        val video = TextureView(this).apply {
-            isOpaque = false
-            surfaceTextureListener = textureListener
+        val firmware = Mg4FirmwareProfile.detect()
+        surfaceVideo = AirPlayPersistence.loadSurfaceVideoRenderer(this) ?: firmware.preferSurfaceVideo
+        val video: View = if (surfaceVideo) {
+            SurfaceView(this).apply { holder.addCallback(surfaceCallback) }
+        } else {
+            TextureView(this).apply {
+                isOpaque = false
+                surfaceTextureListener = textureListener
+            }
         }
+        appendLog(
+            "Video renderer ${if (surfaceVideo) "SurfaceView" else "TextureView"} " +
+                "firmware=${firmware.firmware ?: "unknown"} profile=${firmware.generation}",
+        )
         val gestureLayer = View(this).apply {
             isClickable = true
             setOnTouchListener { view, event -> onHostTouch(view, event) }
@@ -1308,6 +1345,30 @@ class CarPlayHostActivity : ComponentActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(12) },
+        )
+        content.addView(
+            settingsSwitchRow(
+                getString(R.string.overlay_video_renderer),
+                surfaceVideo,
+                getString(R.string.overlay_video_renderer_description),
+            ) { checked ->
+                AirPlayPersistence.saveSurfaceVideoRenderer(this, checked)
+                appendLog(
+                    "Video renderer set to ${if (checked) "SurfaceView" else "TextureView"}; " +
+                        "applies next time CarPlay opens",
+                )
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(16) },
+        )
+        content.addView(
+            menuText(getString(R.string.overlay_video_renderer_description), 15f, MENU_SECONDARY),
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(6) },
         )
 
         content.addView(
