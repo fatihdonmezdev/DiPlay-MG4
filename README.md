@@ -17,7 +17,7 @@ Package: `com.shihab.diplay`. Car-test builds from this fork install as
 |---|---|
 | Firmware profile | Reads `ro.build.mt2712.version` at start-up and applies SWI69 or SWI165 settings. Unknown firmware keeps upstream behaviour. |
 | SWI165 launcher | Uses `com.saicmotor.hmi.launcher`. The stock CarPlay-card shortcut stays off until that card is measured. |
-| Video renderer | SWI165 draws CarPlay into a `SurfaceView` (hardware overlay), like the stock AllGo CarPlay app, to fix the washed-out picture. **Settings > Window > Overlay video renderer** switches it on any firmware. |
+| Video renderer | SWI165 draws CarPlay into a `SurfaceView` (hardware overlay), like the stock AllGo CarPlay app, to fix the washed-out picture. **Settings > Display and performance > Overlay video renderer** switches it on any firmware. |
 | Mac build without ADB | Build steps for a Mac and install from a USB stick, below. |
 
 Details: [docs/MG4_SWI165.md](docs/MG4_SWI165.md).

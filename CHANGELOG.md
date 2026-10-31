@@ -1,6 +1,10 @@
+# MG4CPlay 0.2.9-mg4.65 (SWI165 fork), 2026-11-01
+
+- Fix the overlay video renderer and Wi-Fi audio switches not appearing. They had been added to an old settings menu that DiPlay no longer opens. They are now in DiPlay's settings: **Display and performance > Overlay video renderer** and **Audio routing > CarPlay audio over Wi-Fi (experimental)**.
+
 # MG4CPlay 0.2.9-mg4.64 (SWI165 fork), 2026-11-01
 
-- Add an optional **CarPlay audio over Wi-Fi (experimental)** switch under Settings. When on, the iPhone sends music over Wi-Fi and DiPlay plays it, DiPlay takes audio focus for music, and the car is no longer switched to Bluetooth Music. Applies when CarPlay reconnects.
+- Add an optional **CarPlay audio over Wi-Fi (experimental)** switch under Settings (shown from mg4.65). When on, the iPhone sends music over Wi-Fi and DiPlay plays it, DiPlay takes audio focus for music, and the car is no longer switched to Bluetooth Music. Applies when CarPlay reconnects.
 - Off by default on every firmware: the car’s Bluetooth Music (hybrid) path is unchanged.
 - The log now records the audio mode, firmware, profile and focus setting once per session.
 - Not yet tested on the car. Claiming the car’s CarPlay audio source is still to come if the sound does not reach the speakers.

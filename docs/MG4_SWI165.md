@@ -23,8 +23,8 @@ straight into a `SurfaceView`, so frames go to the display's hardware overlay pl
 DiPlay's original `TextureView` path composites the video on the GPU instead, which
 looks washed out next to the stock app on SWI165.
 
-SWI165 now defaults to the `SurfaceView` path. **Settings > Window > Overlay video
-renderer** switches between the two on any firmware. The choice applies the next time
+SWI165 now defaults to the `SurfaceView` path. **Settings > Display and performance >
+Overlay video renderer** switches between the two on any firmware. The choice applies the next time
 CarPlay opens. The diagnostic log records which renderer and firmware profile were used:
 
 ```text

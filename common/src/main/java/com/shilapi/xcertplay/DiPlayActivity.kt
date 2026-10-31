@@ -317,8 +317,18 @@ class DiPlayActivity : ComponentActivity() {
             toggle(card, getString(R.string.full_screen), getString(R.string.hide_the_car_s_system_bars_while_carplay_is_open), AirPlayPersistence.loadHideTopBar(this) && AirPlayPersistence.loadHideBottomBar(this)) {
                 AirPlayPersistence.saveHideTopBar(this, it); AirPlayPersistence.saveHideBottomBar(this, it)
             }
+            toggle(card, getString(R.string.overlay_video_renderer), getString(R.string.overlay_video_renderer_description),
+                AirPlayPersistence.loadSurfaceVideoRenderer(this) ?: Mg4FirmwareProfile.detect().preferSurfaceVideo) {
+                AirPlayPersistence.saveSurfaceVideoRenderer(this, it)
+            }
         }
         section(content, getString(R.string.audio_routing)) { card ->
+            toggle(card, getString(R.string.carplay_wifi_audio), getString(R.string.carplay_wifi_audio_description),
+                (AirPlayPersistence.loadAudioMode(this) ?: Mg4FirmwareProfile.detect().defaultAudioMode) ==
+                    com.shilapi.xcertplay.media.AudioMode.CARPLAY_WIFI) {
+                AirPlayPersistence.saveAudioMode(this,
+                    if (it) com.shilapi.xcertplay.media.AudioMode.CARPLAY_WIFI else com.shilapi.xcertplay.media.AudioMode.HYBRID_BLUETOOTH)
+            }
             toggle(card, getString(R.string.contrib_audio_home_toggle_audio_focus), getString(R.string.contrib_audio_home_toggle_audio_focus_desc), AirPlayPersistence.loadAudioFocusEnabled(this)) { AirPlayPersistence.saveAudioFocusEnabled(this, it) }
             if (resources.getBoolean(R.bool.config_advanced_audio_channel_mapping)) {
                 toggle(card, getString(R.string.advanced_audio_channel_mapping),

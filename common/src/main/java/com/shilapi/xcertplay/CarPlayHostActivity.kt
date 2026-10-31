@@ -1350,54 +1350,6 @@ class CarPlayHostActivity : ComponentActivity() {
             ).apply { topMargin = dp(12) },
         )
         content.addView(
-            settingsSwitchRow(
-                getString(R.string.overlay_video_renderer),
-                surfaceVideo,
-                getString(R.string.overlay_video_renderer_description),
-            ) { checked ->
-                AirPlayPersistence.saveSurfaceVideoRenderer(this, checked)
-                appendLog(
-                    "Video renderer set to ${if (checked) "SurfaceView" else "TextureView"}; " +
-                        "applies next time CarPlay opens",
-                )
-            },
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(16) },
-        )
-        content.addView(
-            menuText(getString(R.string.overlay_video_renderer_description), 15f, MENU_SECONDARY),
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(6) },
-        )
-        content.addView(
-            settingsSwitchRow(
-                getString(R.string.carplay_wifi_audio),
-                (AirPlayPersistence.loadAudioMode(this) ?: Mg4FirmwareProfile.detect().defaultAudioMode) ==
-                    AudioMode.CARPLAY_WIFI,
-                getString(R.string.carplay_wifi_audio_description),
-            ) { checked ->
-                val mode = if (checked) AudioMode.CARPLAY_WIFI else AudioMode.HYBRID_BLUETOOTH
-                AirPlayPersistence.saveAudioMode(this, mode)
-                appendLog("Audio mode set to $mode; applies next time CarPlay reconnects")
-            },
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(16) },
-        )
-        content.addView(
-            menuText(getString(R.string.carplay_wifi_audio_description), 15f, MENU_SECONDARY),
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(6) },
-        )
-
-        content.addView(
             settingsCategoryHeader(getString(R.string.diagnostics)),
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
