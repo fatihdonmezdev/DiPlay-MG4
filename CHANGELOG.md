@@ -1,3 +1,7 @@
+# MG4CPlay 0.2.9-mg4.63 (SWI165 fork), 2026-11-01
+
+- Fix the "connect Bluetooth for audio" prompt appearing on every connect. The check asked the wrong Bluetooth profile (A2DP source instead of the car's A2DP sink), always found nothing after a 3-second wait, and opened Bluetooth settings over CarPlay. The car now switches to Bluetooth Music when the phone is connected, and only prompts when it is known not to be.
+
 # MG4CPlay 0.2.9-mg4.62 (SWI165 fork), 2026-11-01
 
 - Detect the MG4 firmware generation and apply SWI69 or SWI165 settings; unknown firmware keeps the previous behaviour.

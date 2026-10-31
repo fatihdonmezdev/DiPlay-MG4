@@ -1,6 +1,6 @@
 # Plan: Wi-Fi audio on SWI165
 
-Status: plan only, for build `0.2.9-mg4.63`. Nothing here is implemented yet.
+Status: plan only, for build `0.2.9-mg4.64`. Nothing here is implemented yet.
 
 ## Goal
 

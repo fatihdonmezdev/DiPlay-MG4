@@ -1290,10 +1290,14 @@ class CarPlayController(
             debugLog("car source: Bluetooth adapter unavailable; leaving source alone")
             return
         }
-        if (!hasBluetoothAudioDevice(adapter)) {
-            debugLog("car source: no A2DP device connected; prompting the driver")
-            promptConnectBluetoothForAudio()
-            return
+        when (bluetoothAudioConnected(adapter)) {
+            false -> {
+                debugLog("car source: no A2DP device connected; prompting the driver")
+                promptConnectBluetoothForAudio()
+                return
+            }
+            null -> debugLog("car source: A2DP state unreadable; trying the switch anyway")
+            true -> debugLog("car source: A2DP device connected")
         }
         Mg4BluetoothSource.connect(appContext)
         repeat(SOURCE_SWITCH_ATTEMPTS) { attempt ->
@@ -1307,9 +1311,21 @@ class CarPlayController(
         debugLog("car source: BT Music service never answered; source left unchanged")
     }
 
-    private fun hasBluetoothAudioDevice(adapter: BluetoothAdapter): Boolean =
-        connectedBluetoothDevices(adapter, BluetoothProfile.A2DP, BluetoothA2dp::class.java)
-            .isNotEmpty()
+    /**
+     * Is a phone streaming to the car over Bluetooth audio? Null when no profile answered.
+     *
+     * A head unit receives audio, so the phone appears on the A2DP *sink* profile (hidden
+     * constant 11 on Android 9), not on [BluetoothProfile.A2DP], which lists devices this
+     * unit would send audio to. Asking only A2DP timed out on SWI165 and wrongly sent the
+     * driver to Bluetooth settings, taking CarPlay off screen.
+     */
+    private fun bluetoothAudioConnected(adapter: BluetoothAdapter): Boolean? {
+        val sink = connectedBluetoothDevicesOrNull(adapter, BLUETOOTH_PROFILE_A2DP_SINK, BluetoothProfile::class.java)
+        if (sink?.isNotEmpty() == true) return true
+        val source = connectedBluetoothDevicesOrNull(adapter, BluetoothProfile.A2DP, BluetoothA2dp::class.java)
+        if (source?.isNotEmpty() == true) return true
+        return if (sink == null && source == null) null else false
+    }
 
     private fun promptConnectBluetoothForAudio() {
         mainHandler.post {
@@ -2081,7 +2097,15 @@ class CarPlayController(
         adapter: BluetoothAdapter,
         profile: Int,
         profileClass: Class<T>,
-    ): Set<BluetoothDevice> {
+    ): Set<BluetoothDevice> = connectedBluetoothDevicesOrNull(adapter, profile, profileClass).orEmpty()
+
+    /** Connected devices on [profile], or null when the profile proxy never answered. */
+    private fun <T : BluetoothProfile> connectedBluetoothDevicesOrNull(
+        adapter: BluetoothAdapter,
+        profile: Int,
+        profileClass: Class<T>,
+    ): Set<BluetoothDevice>? {
+        val answered = java.util.concurrent.atomic.AtomicBoolean(false)
         val latch = CountDownLatch(1)
         val devices = java.util.Collections.synchronizedSet(mutableSetOf<BluetoothDevice>())
         val listener = object : BluetoothProfile.ServiceListener {
@@ -2089,6 +2113,7 @@ class CarPlayController(
                 try {
                     if (profileClass.isInstance(proxy)) {
                         devices.addAll(proxy.connectedDevices.orEmpty())
+                        answered.set(true)
                     }
                 } catch (error: SecurityException) {
                     Log.w(IphoneCarPlayConfiguration.TAG, "Could not read connected Bluetooth devices", error)
@@ -2102,10 +2127,17 @@ class CarPlayController(
                 latch.countDown()
             }
         }
-        if (!adapter.getProfileProxy(appContext, listener, profile)) return emptySet()
+        val requested = try {
+            adapter.getProfileProxy(appContext, listener, profile)
+        } catch (error: RuntimeException) {
+            Log.w(IphoneCarPlayConfiguration.TAG, "Bluetooth profile $profile unavailable", error)
+            false
+        }
+        if (!requested) return null
         if (!latch.await(3, TimeUnit.SECONDS)) {
             Log.w(IphoneCarPlayConfiguration.TAG, "Timed out reading Bluetooth profile $profile")
         }
+        if (!answered.get()) return null
         return synchronized(devices) { devices.toSet() }
     }
 
@@ -2366,6 +2398,9 @@ class CarPlayController(
         private const val WIRELESS_HANDOFF_TIMEOUT_MILLIS = 45_000L
         private const val RFCOMM_CONNECT_TIMEOUT_MILLIS = 15_000L
         private const val BLUETOOTH_PROFILE_AVRCP_CONTROLLER = 12
+
+        /** Hidden `BluetoothProfile.A2DP_SINK` on Android 9: the role a head unit plays. */
+        private const val BLUETOOTH_PROFILE_A2DP_SINK = 11
 
         /** The BT music service binds asynchronously; give it a few seconds to answer. */
         private const val SOURCE_SWITCH_ATTEMPTS = 12

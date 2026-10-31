@@ -44,10 +44,11 @@ screen such as MG4Dash never show the stock card, so they don't need it.
 | Item | State |
 |---|---|
 | Firmware detection and profile | Done, unit tested |
-| Overlay video renderer | Built, awaiting a car test |
+| Overlay video renderer | Confirmed on the car, 2026-11-01 (H.264 and HEVC, iPhone 15 Pro, iOS 27.2) |
 | Launcher CarPlay-card shortcut | Not needed with MG4Dash; card not measured |
 | Wi-Fi audio instead of Bluetooth | Planned: [MG4_SWI165_WIFI_AUDIO_PLAN.md](./MG4_SWI165_WIFI_AUDIO_PLAN.md) |
-| Vehicle data (battery, range, gear) | Supported by EVHardware on SWI165, not yet checked in DiPlay |
+| Battery and range to the iPhone | Confirmed on the car, 2026-11-01 |
+| Switch to Bluetooth Music on connect | Fixed in mg4.63 (wrong Bluetooth profile check), awaiting a car test |
 
 ## Signing note
 
