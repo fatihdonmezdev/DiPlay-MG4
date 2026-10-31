@@ -11,6 +11,7 @@ import com.shilapi.xcertplay.airplay.AirPlayIdentity
 import com.shilapi.xcertplay.airplay.PairingStore
 import com.shilapi.xcertplay.airplay.SafeAreaCodec
 import com.shilapi.xcertplay.airplay.SafeAreaRect
+import com.shilapi.xcertplay.media.AudioMode
 import com.shilapi.xcertplay.orchestration.ManualHotspotBand
 import com.shilapi.xcertplay.orchestration.ManualHotspotSecurity
 import com.shilapi.xcertplay.orchestration.MfiTarget
@@ -39,6 +40,7 @@ object AirPlayPersistence {
     private const val KEY_HEVC_ENABLED = "hevc_enabled"
     private const val KEY_HEVC_SOFTWARE_DECODER = "hevc_software_decoder"
     private const val KEY_SURFACE_VIDEO = "surface_video_renderer"
+    private const val KEY_AUDIO_MODE = "audio_mode"
     private const val KEY_ADVANCED_AUDIO_CHANNEL_MAPPING = "advanced_audio_channel_mapping"
     private const val KEY_AUDIO_FOCUS_ENABLED = "audio_focus_enabled"
     private const val KEY_MEDIA_AUDIO_CHANNEL = "media_audio_channel"
@@ -136,6 +138,19 @@ object AirPlayPersistence {
     fun saveSurfaceVideoRenderer(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_SURFACE_VIDEO, enabled)
+            .apply()
+    }
+
+    /** Null until the user picks a mode (or the stored value is unrecognised); callers then use the firmware default. */
+    fun loadAudioMode(context: Context): AudioMode? {
+        val name = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_AUDIO_MODE, null) ?: return null
+        return AudioMode.entries.firstOrNull { it.name == name }
+    }
+
+    fun saveAudioMode(context: Context, mode: AudioMode) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_AUDIO_MODE, mode.name)
             .apply()
     }
 

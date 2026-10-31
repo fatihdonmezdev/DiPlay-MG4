@@ -1,3 +1,10 @@
+# MG4CPlay 0.2.9-mg4.64 (SWI165 fork), 2026-11-01
+
+- Add an optional **CarPlay audio over Wi-Fi (experimental)** switch under Settings. When on, the iPhone sends music over Wi-Fi and DiPlay plays it, DiPlay takes audio focus for music, and the car is no longer switched to Bluetooth Music. Applies when CarPlay reconnects.
+- Off by default on every firmware: the car’s Bluetooth Music (hybrid) path is unchanged.
+- The log now records the audio mode, firmware, profile and focus setting once per session.
+- Not yet tested on the car. Claiming the car’s CarPlay audio source is still to come if the sound does not reach the speakers.
+
 # MG4CPlay 0.2.9-mg4.63 (SWI165 fork), 2026-11-01
 
 - Fix the "connect Bluetooth for audio" prompt appearing on every connect. The check asked the wrong Bluetooth profile (A2DP source instead of the car's A2DP sink), always found nothing after a 3-second wait, and opened Bluetooth settings over CarPlay. The car now switches to Bluetooth Music when the phone is connected, and only prompts when it is known not to be.

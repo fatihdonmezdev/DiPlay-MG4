@@ -33,6 +33,7 @@ import com.shilapi.xcertplay.airplay.PairingStore
 import com.shilapi.xcertplay.airplay.VideoInCar
 import com.shilapi.xcertplay.hud.BydNavigationOutputs
 import com.shilapi.xcertplay.iap2.session.Iap2Session
+import com.shilapi.xcertplay.media.AudioMode
 import com.shilapi.xcertplay.mfi.Iap2MfiAuthenticationClient
 import com.shilapi.xcertplay.mfi.MfiAuthenticationClient
 import com.shilapi.xcertplay.mfi.RemoteMfiAuthenticationClient
@@ -150,6 +151,7 @@ class CarPlayController(
     private val clearPairRecord: () -> Unit = {},
     private val locationProvider: Iap2LocationProvider? = null,
     private val vehicleStatusProvider: com.shilapi.xcertplay.transport.VehicleStatusProvider? = null,
+    private val audioMode: AudioMode = AudioMode.HYBRID_BLUETOOTH,
 ) : Closeable {
     private val bydOutputsEnabled = !VehicleIntegration.isMg4(context.applicationContext)
 
@@ -1264,7 +1266,11 @@ class CarPlayController(
                 // factory A2DP/AVRCP profiles must stay connected so the iPhone can send
                 // music through the car's stable Bluetooth audio path.
                 onStatus(CarPlayStatus.WirelessActive)
-                switchCarSourceToBluetooth()
+                if (audioMode == AudioMode.CARPLAY_WIFI) {
+                    debugLog("car source: Wi-Fi audio mode; skipping the switch to BT Music")
+                } else {
+                    switchCarSourceToBluetooth()
+                }
             },
             "xcertplay-wireless-handoff",
         ).apply {

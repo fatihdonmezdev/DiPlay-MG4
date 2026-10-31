@@ -69,6 +69,7 @@ import com.shilapi.xcertplay.airplay.SafeAreaRect
 import com.shilapi.xcertplay.host.R
 import com.shilapi.xcertplay.location.AndroidCarPlayLocationProvider
 import com.shilapi.xcertplay.media.AndroidMediaSink
+import com.shilapi.xcertplay.media.AudioMode
 import com.shilapi.xcertplay.media.CarPlayTouchMapper
 import com.shilapi.xcertplay.network.CarPlayVpnService
 import com.shilapi.xcertplay.orchestration.CarPlayController
@@ -244,6 +245,8 @@ class CarPlayHostActivity : ComponentActivity() {
 
     private var videoView: View? = null
     private var surfaceVideo = false
+    /** Resolved once per CarPlay session in [startCarPlay]; settings changes apply on reconnect. */
+    private var sessionAudioMode = AudioMode.HYBRID_BLUETOOTH
     private var gestureOverlay: View? = null
     private var settingsMenu: View? = null
     private var mfiTargetGroup: RadioGroup? = null
@@ -1365,6 +1368,29 @@ class CarPlayHostActivity : ComponentActivity() {
         )
         content.addView(
             menuText(getString(R.string.overlay_video_renderer_description), 15f, MENU_SECONDARY),
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(6) },
+        )
+        content.addView(
+            settingsSwitchRow(
+                getString(R.string.carplay_wifi_audio),
+                (AirPlayPersistence.loadAudioMode(this) ?: Mg4FirmwareProfile.detect().defaultAudioMode) ==
+                    AudioMode.CARPLAY_WIFI,
+                getString(R.string.carplay_wifi_audio_description),
+            ) { checked ->
+                val mode = if (checked) AudioMode.CARPLAY_WIFI else AudioMode.HYBRID_BLUETOOTH
+                AirPlayPersistence.saveAudioMode(this, mode)
+                appendLog("Audio mode set to $mode; applies next time CarPlay reconnects")
+            },
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(16) },
+        )
+        content.addView(
+            menuText(getString(R.string.carplay_wifi_audio_description), 15f, MENU_SECONDARY),
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -2863,11 +2889,11 @@ class CarPlayHostActivity : ComponentActivity() {
             oemLabel = oemLabel,
             icons = listOf(loadAirPlayIcon()),
             videoInCar = com.shilapi.xcertplay.hud.BydOutputSettings.videoWhileParked(this),
-            // Screen-only CarPlay: the renderer deliberately drops the "media" stream so the
-            // MG's own A2DP keeps playing. If we still advertised audio output, the iPhone
-            // would hand media over to CarPlay, we would discard it, and the Bluetooth music
-            // would cut out and never resume.
-            disableAudioOutput = true,
+            // Hybrid (default): screen-only CarPlay. The renderer deliberately drops the "media"
+            // stream so the MG's own A2DP keeps playing. If we still advertised audio output,
+            // the iPhone would hand media over to CarPlay, we would discard it, and the
+            // Bluetooth music would cut out and never resume. Wi-Fi audio advertises audio.
+            disableAudioOutput = sessionAudioMode == AudioMode.HYBRID_BLUETOOTH,
         )
     }
 
@@ -3031,6 +3057,7 @@ class CarPlayHostActivity : ComponentActivity() {
             preferSoftwareHevcDecoder = hevcSoftwareDecoderEnabled,
             advancedAudioChannelMapping = advancedAudioChannelMapping,
             audioFocusEnabled = AirPlayPersistence.loadAudioFocusEnabled(this),
+            audioMode = sessionAudioMode,
             mediaChannel = AirPlayPersistence.loadMediaAudioChannel(this),
             navigationChannel = AirPlayPersistence.loadNavigationAudioChannel(this),
             context = this,
@@ -3186,6 +3213,13 @@ class CarPlayHostActivity : ComponentActivity() {
         if (CarPlayBackgroundSession.hasSession() && !CarPlayBackgroundSession.isOwner(this)) return
         if (shuttingDown.get() || menuOpen || handshakeResetInProgress || controller != null) return
         val controllerGeneration = restartGeneration
+        val firmware = Mg4FirmwareProfile.detect()
+        sessionAudioMode = AirPlayPersistence.loadAudioMode(this) ?: firmware.defaultAudioMode
+        appendLog(
+            "Audio mode=$sessionAudioMode firmware=${firmware.firmware ?: "unknown"} " +
+                "profile=${firmware.generation} " +
+                "focus=${if (AirPlayPersistence.loadAudioFocusEnabled(this) || sessionAudioMode == AudioMode.CARPLAY_WIFI) "on" else "off"}",
+        )
         val config = createRuntimeConfig()
         val airPlayConfig = createAirPlayConfig(size)
         val locationProvider: Iap2LocationProvider? =
@@ -3251,6 +3285,7 @@ class CarPlayHostActivity : ComponentActivity() {
             } else {
                 null
             },
+            audioMode = sessionAudioMode,
         )
         controller = next
         armStartupWatchdog()

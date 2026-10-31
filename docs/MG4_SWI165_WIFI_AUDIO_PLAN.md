@@ -1,6 +1,6 @@
 # Plan: Wi-Fi audio on SWI165
 
-Status: plan only, for build `0.2.9-mg4.64`. Nothing here is implemented yet.
+Status: steps 1, 2, 3.1, 4 and 5 are implemented in `0.2.9-mg4.64` and untested on the car. Step 3.2 is still pending.
 
 ## Goal
 

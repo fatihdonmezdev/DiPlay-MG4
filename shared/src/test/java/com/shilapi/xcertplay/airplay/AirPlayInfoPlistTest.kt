@@ -49,6 +49,32 @@ class AirPlayInfoPlistTest {
     }
 
     @Test
+    fun audioIsAdvertisedOnlyWhenAudioOutputIsEnabled() {
+        val base = AirPlayConfig(
+            deviceName = "test",
+            deviceId = "02:00:00:00:00:02",
+            btMac = "02:00:00:00:00:02",
+            sourceVersion = "366.0",
+            main = AirPlayDisplayConfig(widthPixels = 1280, heightPixels = 720),
+        )
+
+        fun resourceIds(info: Map<String, Any?>): List<Any?> {
+            val modes = info["modes"] as Map<*, *>
+            return (modes["resources"] as List<*>).map { (it as Map<*, *>)["resourceID"] }
+        }
+
+        val hybrid = AirPlayInfoPlist.build(base.copy(disableAudioOutput = true))
+        assertFalse(hybrid.containsKey("audioFormats"))
+        assertFalse(hybrid.containsKey("audioLatencies"))
+        assertEquals(1, resourceIds(hybrid).size)
+
+        val wifi = AirPlayInfoPlist.build(base.copy(disableAudioOutput = false))
+        assertTrue(wifi.containsKey("audioFormats"))
+        assertTrue(wifi.containsKey("audioLatencies"))
+        assertEquals(2, resourceIds(wifi).size)
+    }
+
+    @Test
     fun drivingSideAndDisplayValuesAreAdvertised() {
         val info = AirPlayInfoPlist.build(
             AirPlayConfig(

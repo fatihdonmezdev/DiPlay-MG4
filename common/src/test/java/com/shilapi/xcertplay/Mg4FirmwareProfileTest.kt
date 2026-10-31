@@ -1,6 +1,7 @@
 package com.shilapi.xcertplay
 
 import com.shilapi.xcertplay.Mg4FirmwareProfile.Generation
+import com.shilapi.xcertplay.media.AudioMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -36,6 +37,13 @@ class Mg4FirmwareProfileTest {
             assertEquals(Generation.OTHER, profile.generation)
             assertFalse(profile.preferSurfaceVideo)
             assertFalse(Mg4LauncherOverlaySupport.isSupported(profile))
+        }
+    }
+
+    @Test
+    fun everyFirmwareDefaultsToHybridBluetoothAudio() {
+        for (firmware in listOf("SWI69-12345-1000R01", "SWI165-29176-1100R11", null, "BYD-DiLink")) {
+            assertEquals(AudioMode.HYBRID_BLUETOOTH, Mg4FirmwareProfile.forFirmware(firmware).defaultAudioMode)
         }
     }
 }

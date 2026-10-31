@@ -1,5 +1,7 @@
 package com.shilapi.xcertplay
 
+import com.shilapi.xcertplay.media.AudioMode
+
 /**
  * Per-firmware behaviour for MG4 head units, chosen from `ro.build.mt2712.version`.
  *
@@ -21,6 +23,8 @@ internal data class Mg4FirmwareProfile(
      * stock AllGo CarPlay app) instead of a TextureView (GPU composited) by default.
      */
     val preferSurfaceVideo: Boolean,
+    /** How music reaches the speakers when the user has not chosen; hybrid until Wi-Fi audio is proven. */
+    val defaultAudioMode: AudioMode,
 ) {
     enum class Generation { SWI69, SWI165, OTHER }
 
@@ -52,6 +56,7 @@ internal data class Mg4FirmwareProfile(
                     // The stock AllgoCarplay_EH32 app decodes into a SurfaceView. The TextureView
                     // path looks washed out next to it on this unit.
                     preferSurfaceVideo = true,
+                    defaultAudioMode = AudioMode.HYBRID_BLUETOOTH,
                 )
                 value.startsWith("SWI69") -> Mg4FirmwareProfile(
                     generation = Generation.SWI69,
@@ -59,6 +64,7 @@ internal data class Mg4FirmwareProfile(
                     stockLauncherPackage = "com.saicmotor.launcher",
                     launcherCarPlayCard = SWI69_CARPLAY_CARD,
                     preferSurfaceVideo = false,
+                    defaultAudioMode = AudioMode.HYBRID_BLUETOOTH,
                 )
                 else -> other(value)
             }
@@ -76,6 +82,7 @@ internal data class Mg4FirmwareProfile(
             stockLauncherPackage = null,
             launcherCarPlayCard = null,
             preferSurfaceVideo = false,
+            defaultAudioMode = AudioMode.HYBRID_BLUETOOTH,
         )
 
         private fun readSystemProperty(key: String): String? = runCatching {

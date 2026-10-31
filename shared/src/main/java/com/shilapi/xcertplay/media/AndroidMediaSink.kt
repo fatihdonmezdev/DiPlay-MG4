@@ -130,6 +130,7 @@ class AndroidMediaSink(
     private val preferSoftwareHevcDecoder: Boolean = false,
     private val advancedAudioChannelMapping: Boolean = false,
     private val audioFocusEnabled: Boolean = false,
+    private val audioMode: AudioMode = AudioMode.HYBRID_BLUETOOTH,
     private val mediaChannel: Int = 0,
     private val navigationChannel: Int = 0,
     context: Context? = null,
@@ -141,9 +142,11 @@ class AndroidMediaSink(
     private val onMediaAudioChanged: (Boolean) -> Unit = {},
 ) : MediaSink {
     private val appContext = context?.applicationContext
+    // Wi-Fi audio plays music locally, so it needs focus; hybrid leaves focus to the car.
+    private val effectiveAudioFocus = audioFocusEnabled || audioMode == AudioMode.CARPLAY_WIFI
     private val audioFocusCoordinator = AudioFocusCoordinator(
         appContext,
-        audioFocusEnabled,
+        effectiveAudioFocus,
         onAudioDiagnostic,
     )
     private val screenStateLock = Any()
@@ -232,7 +235,7 @@ class AndroidMediaSink(
     }
 
     override fun onAudioStarted(id: AudioStreamId, format: AudioFormat, firstSample: Int) {
-        if (format.audioType == "media") {
+        if (shouldDropMedia(audioMode, format.audioType)) {
             onAudioDiagnostic(
                 "Audio: hybrid MG Bluetooth media; local CarPlay renderer bypassed",
             )
@@ -242,7 +245,7 @@ class AndroidMediaSink(
     }
 
     override fun onAudioRtp(id: AudioStreamId, format: AudioFormat, rtp: ByteArray, sample: Int) {
-        if (format.audioType == "media") return
+        if (shouldDropMedia(audioMode, format.audioType)) return
         audioRenderer(id, format).submit(rtp, sample)
     }
 
@@ -310,7 +313,7 @@ class AndroidMediaSink(
         return AudioRenderer(
             format,
             advancedAudioChannelMapping,
-            audioFocusEnabled,
+            effectiveAudioFocus,
             mediaChannel,
             navigationChannel,
             audioFocusCoordinator,
@@ -318,6 +321,12 @@ class AndroidMediaSink(
             mediaBufferMillis,
             onAudioDiagnostic,
         ).also { audioRenderers[id] = it }
+    }
+
+    companion object {
+        /** Only hybrid mode discards music; the car plays it over Bluetooth instead. */
+        internal fun shouldDropMedia(audioMode: AudioMode, audioType: String?): Boolean =
+            audioMode == AudioMode.HYBRID_BLUETOOTH && audioType == "media"
     }
 }
 
