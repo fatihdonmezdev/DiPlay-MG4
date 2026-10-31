@@ -1,6 +1,8 @@
 # MG4CPlay 0.2.9-mg4.65 (SWI165 fork), 2026-11-01
 
 - Bluetooth Music switch: connect to the car's media service when CarPlay starts instead of at the handoff, keep trying for up to 10 seconds, and record each outcome in the diagnostic report (bind refused, not connected, focus or play rejected). mg4.64 logs showed "never answered" after 3 seconds with no reason.
+- If the SAIC media service cannot switch the car to Bluetooth Music, fall back to pressing play on the car's A2DP media browser, the method MG4Dash uses. The log says which path ran and whether that service exists on this firmware.
+- Car audio source codes now follow MG4Control's on-car measurements and the SWI68 launcher (6 USB, 14 online, 50 CarPlay, 70 Android Auto), and the log adds the current player type.
 - More diagnostics for audio testing: the car's audio source before and after the Bluetooth Music switch (and once in Wi-Fi mode), and the head unit's music and call volumes, mute state and audio mode at session start.
 - Update Bouncy Castle 1.79 to 1.86 and JmDNS 3.6.3 to 3.6.5 (patch releases).
 - Fix the overlay video renderer and Wi-Fi audio switches not appearing. They had been added to an old settings menu that DiPlay no longer opens. They are now in DiPlay's settings: **Display and performance > Overlay video renderer** and **Audio routing > CarPlay audio over Wi-Fi (experimental)**.

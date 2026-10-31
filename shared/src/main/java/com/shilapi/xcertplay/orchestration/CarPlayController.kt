@@ -20,6 +20,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import com.shilapi.xcertplay.vehicle.Mg4A2dpBrowser
 import com.shilapi.xcertplay.vehicle.Mg4BluetoothSource
 import com.shilapi.xcertplay.shared.R
 import com.shilapi.xcertplay.airplay.AirPlayConfig
@@ -1276,7 +1277,7 @@ class CarPlayController(
                     if (!bydOutputsEnabled) {
                         Mg4BluetoothSource.connect(appContext)
                         Thread.sleep(SOURCE_SWITCH_SETTLE_MILLIS)
-                        debugLog("car source: current source=${Mg4BluetoothSource.currentSourceDescription()}")
+                        debugLog("car source: current ${Mg4BluetoothSource.currentSourceDescription()}")
                     }
                 } else {
                     switchCarSourceToBluetooth()
@@ -1316,7 +1317,7 @@ class CarPlayController(
             true -> debugLog("car source: A2DP device connected")
         }
         debugLog("car source: BT music service ${Mg4BluetoothSource.connect(appContext)}")
-        debugLog("car source: current source before switch=${Mg4BluetoothSource.currentSourceDescription()}")
+        debugLog("car source: before switch ${Mg4BluetoothSource.currentSourceDescription()}")
         var last = Mg4BluetoothSource.Result.NOT_CONNECTED
         repeat(SOURCE_SWITCH_ATTEMPTS) { attempt ->
             if (closed || phase != Phase.WIRELESS) return
@@ -1325,11 +1326,12 @@ class CarPlayController(
                 Mg4BluetoothSource.Result.SWITCHED -> {
                     debugLog("car source: switched to BT Music (attempt ${attempt + 1})")
                     Thread.sleep(SOURCE_SWITCH_SETTLE_MILLIS)
-                    debugLog("car source: current source after switch=${Mg4BluetoothSource.currentSourceDescription()}")
+                    debugLog("car source: after switch ${Mg4BluetoothSource.currentSourceDescription()}")
                     return
                 }
                 Mg4BluetoothSource.Result.BIND_REFUSED -> {
-                    debugLog("car source: ${last.logText}; source left unchanged")
+                    debugLog("car source: ${last.logText}; trying the A2DP media browser")
+                    switchCarSourceViaA2dpBrowser()
                     return
                 }
                 else -> Unit
@@ -1337,9 +1339,18 @@ class CarPlayController(
             Thread.sleep(SOURCE_SWITCH_RETRY_MILLIS)
         }
         debugLog(
-            "car source: gave up after ${SOURCE_SWITCH_ATTEMPTS * SOURCE_SWITCH_RETRY_MILLIS / 1000}s: " +
-                "${last.logText}; source left unchanged",
+            "car source: SAIC media service gave up after ${SOURCE_SWITCH_ATTEMPTS * SOURCE_SWITCH_RETRY_MILLIS / 1000}s: " +
+                "${last.logText}; trying the A2DP media browser",
         )
+        switchCarSourceViaA2dpBrowser()
+    }
+
+    /** Fallback used by MG4Dash: press play on the car's A2DP sink media browser. */
+    private fun switchCarSourceViaA2dpBrowser() {
+        if (closed || phase != Phase.WIRELESS) return
+        debugLog("car source: ${Mg4A2dpBrowser.play(appContext)}")
+        Thread.sleep(SOURCE_SWITCH_SETTLE_MILLIS)
+        debugLog("car source: current ${Mg4BluetoothSource.currentSourceDescription()}")
     }
 
     /**

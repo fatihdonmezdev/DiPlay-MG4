@@ -33,6 +33,7 @@ object Mg4BluetoothSource {
     private const val ACTION_STATUS = "com.saicmotor.service.media.PLAY_STATUS_ACTION"
     private const val DESC_STATUS = "com.saicmotor.sdk.media.IPlayStatusBinderInterface"
     private const val TX_CURRENT_SOURCE = 0x9
+    private const val TX_CURRENT_PLAYER = 0x1
     private const val TX_BT_PLAY = 2
     private const val TX_BT_REQUEST_FOCUS = 15
 
@@ -103,24 +104,42 @@ object Mg4BluetoothSource {
     }
 
     /**
-     * The car's current audio source for the diagnostic log, e.g. `5 (bluetooth)`, or
-     * `unknown` when the status service has not answered. Codes as in EVHardware's
-     * SaicMediaPlayer: 1-4 radio/DAB, 5 bluetooth, 6 online, 7 usb, 0x32 carplay, 0x46 android-auto.
+     * The car's current audio source and player for the diagnostic log, e.g.
+     * `source=5 (bluetooth) player=4 (bluetooth)`, or `unknown` parts when the status service
+     * has not answered.
+     *
+     * Source codes as measured by MG4Control on the car and used by the SWI68 launcher
+     * (same media SDK as SWI165): 0 none, 1-4 radio/DAB, 5 bluetooth, 6 usb, 14 online,
+     * 0x12 usb-video, 50 carplay, 70 android-auto. EVHardware's own table has 6 and 7 the
+     * other way round and no 14, so it is not used here. Player codes from the SWI68
+     * launcher: 2 usb, 3 online, 4 bluetooth.
      */
     fun currentSourceDescription(): String {
-        val code = SaicAidl.callInt(statusBinder?.takeIf { it.isBinderAlive }, DESC_STATUS, TX_CURRENT_SOURCE)
-            ?: return "unknown"
-        val name = when (code) {
-            in 1..4 -> "radio/DAB"
-            5 -> "bluetooth"
-            6 -> "online"
-            7 -> "usb"
-            0x12 -> "usb-video"
-            0x32 -> "carplay"
-            0x46 -> "android-auto"
-            else -> "other"
-        }
-        return "$code ($name)"
+        val status = statusBinder?.takeIf { it.isBinderAlive }
+        val source = SaicAidl.callInt(status, DESC_STATUS, TX_CURRENT_SOURCE)?.let { code ->
+            val name = when (code) {
+                0 -> "none"
+                in 1..4 -> "radio/DAB"
+                5 -> "bluetooth"
+                6 -> "usb"
+                14 -> "online"
+                0x12 -> "usb-video"
+                50 -> "carplay"
+                70 -> "android-auto"
+                else -> "other"
+            }
+            "$code ($name)"
+        } ?: "unknown"
+        val player = SaicAidl.callInt(status, DESC_STATUS, TX_CURRENT_PLAYER)?.let { code ->
+            val name = when (code) {
+                2 -> "usb"
+                3 -> "online"
+                4 -> "bluetooth"
+                else -> "other"
+            }
+            "$code ($name)"
+        } ?: "unknown"
+        return "source=$source player=$player"
     }
 
     /** One attempt to move the car to Bluetooth Music. */
