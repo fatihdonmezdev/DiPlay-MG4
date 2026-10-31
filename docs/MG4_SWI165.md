@@ -46,6 +46,7 @@ screen such as MG4Dash never show the stock card, so they don't need it.
 | Firmware detection and profile | Done, unit tested |
 | Overlay video renderer | Built, awaiting a car test |
 | Launcher CarPlay-card shortcut | Not needed with MG4Dash; card not measured |
+| Wi-Fi audio instead of Bluetooth | Planned: [MG4_SWI165_WIFI_AUDIO_PLAN.md](./MG4_SWI165_WIFI_AUDIO_PLAN.md) |
 | Vehicle data (battery, range, gear) | Supported by EVHardware on SWI165, not yet checked in DiPlay |
 
 ## Signing note
