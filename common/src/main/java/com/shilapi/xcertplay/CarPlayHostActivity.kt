@@ -2849,6 +2849,18 @@ class CarPlayHostActivity : ComponentActivity() {
         )
     }
 
+    /** Head-unit audio state at session start: a muted or zero-volume stream explains silence. */
+    private fun audioEnvironmentSummary(): String = runCatching {
+        val audio = getSystemService(android.media.AudioManager::class.java)
+        fun stream(name: String, type: Int) =
+            "$name=${audio.getStreamVolume(type)}/${audio.getStreamMaxVolume(type)}" +
+                if (audio.isStreamMute(type)) "(muted)" else ""
+        "Audio environment " +
+            stream("music", android.media.AudioManager.STREAM_MUSIC) + " " +
+            stream("voice", android.media.AudioManager.STREAM_VOICE_CALL) + " " +
+            "musicActive=${audio.isMusicActive} mode=${audio.mode}"
+    }.getOrElse { "Audio environment unreadable: ${it.javaClass.simpleName}" }
+
     private fun loadAirPlayIcon(): AirPlayIcon {
         val customBytes = try {
             AirPlayPersistence.loadCustomAirPlayIconFile(this)?.readBytes()
@@ -3172,6 +3184,7 @@ class CarPlayHostActivity : ComponentActivity() {
                 "profile=${firmware.generation} " +
                 "focus=${if (AirPlayPersistence.loadAudioFocusEnabled(this) || sessionAudioMode == AudioMode.CARPLAY_WIFI) "on" else "off"}",
         )
+        appendLog(audioEnvironmentSummary())
         val config = createRuntimeConfig()
         val airPlayConfig = createAirPlayConfig(size)
         val locationProvider: Iap2LocationProvider? =

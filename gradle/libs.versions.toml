@@ -10,8 +10,8 @@ appProjected = "1.4.0"
 appAutomotive = "1.7.0"
 app = "1.4.0"
 junit = "4.13.2"
-bouncycastle = "1.79"
-jmdns = "3.6.3"
+bouncycastle = "1.86"
+jmdns = "3.6.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

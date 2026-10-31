@@ -30,6 +30,9 @@ object Mg4BluetoothSource {
     private const val MEDIA_CLASS = "com.saicmotor.service.media.MediaService"
     private const val ACTION_BT = "com.saicmotor.service.media.BT_MUSIC_ACTION"
     private const val DESC_BT = "com.saicmotor.sdk.media.IBtMusicBinderInterface"
+    private const val ACTION_STATUS = "com.saicmotor.service.media.PLAY_STATUS_ACTION"
+    private const val DESC_STATUS = "com.saicmotor.sdk.media.IPlayStatusBinderInterface"
+    private const val TX_CURRENT_SOURCE = 0x9
     private const val TX_BT_PLAY = 2
     private const val TX_BT_REQUEST_FOCUS = 15
 
@@ -40,6 +43,21 @@ object Mg4BluetoothSource {
         NOT_CONNECTED("bind requested, service not connected yet"),
         FOCUS_FAILED("requestBtAudioFocus (15) failed"),
         PLAY_FAILED("focus accepted, play (2) failed"),
+    }
+
+    /** Read-only: which source owns the car's audio. Diagnostics only. */
+    @Volatile private var statusBinder: IBinder? = null
+    @Volatile private var statusBindRequested = false
+
+    private val statusConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            statusBinder = service
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            statusBinder = null
+            statusBindRequested = false
+        }
     }
 
     @Volatile private var binder: IBinder? = null
@@ -65,6 +83,15 @@ object Mg4BluetoothSource {
      */
     @Synchronized
     fun connect(context: Context): String {
+        if (!statusBindRequested) {
+            statusBindRequested = runCatching {
+                context.applicationContext.bindService(
+                    Intent(ACTION_STATUS).setClassName(MEDIA_PACKAGE, MEDIA_CLASS),
+                    statusConnection,
+                    Context.BIND_AUTO_CREATE,
+                )
+            }.getOrDefault(false)
+        }
         if (binder?.isBinderAlive == true) return "already connected"
         if (bindRequested && bindAccepted) return "bind pending"
         val intent = Intent(ACTION_BT).setClassName(MEDIA_PACKAGE, MEDIA_CLASS)
@@ -73,6 +100,27 @@ object Mg4BluetoothSource {
         }.onFailure { Log.w(TAG, "BT music bindService threw", it) }.getOrDefault(false)
         bindRequested = true
         return if (bindAccepted) "bind requested" else "bindService refused"
+    }
+
+    /**
+     * The car's current audio source for the diagnostic log, e.g. `5 (bluetooth)`, or
+     * `unknown` when the status service has not answered. Codes as in EVHardware's
+     * SaicMediaPlayer: 1-4 radio/DAB, 5 bluetooth, 6 online, 7 usb, 0x32 carplay, 0x46 android-auto.
+     */
+    fun currentSourceDescription(): String {
+        val code = SaicAidl.callInt(statusBinder?.takeIf { it.isBinderAlive }, DESC_STATUS, TX_CURRENT_SOURCE)
+            ?: return "unknown"
+        val name = when (code) {
+            in 1..4 -> "radio/DAB"
+            5 -> "bluetooth"
+            6 -> "online"
+            7 -> "usb"
+            0x12 -> "usb-video"
+            0x32 -> "carplay"
+            0x46 -> "android-auto"
+            else -> "other"
+        }
+        return "$code ($name)"
     }
 
     /** One attempt to move the car to Bluetooth Music. */

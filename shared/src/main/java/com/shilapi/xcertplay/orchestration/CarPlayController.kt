@@ -1273,6 +1273,11 @@ class CarPlayController(
                 onStatus(CarPlayStatus.WirelessActive)
                 if (audioMode == AudioMode.CARPLAY_WIFI) {
                     debugLog("car source: Wi-Fi audio mode; skipping the switch to BT Music")
+                    if (!bydOutputsEnabled) {
+                        Mg4BluetoothSource.connect(appContext)
+                        Thread.sleep(SOURCE_SWITCH_SETTLE_MILLIS)
+                        debugLog("car source: current source=${Mg4BluetoothSource.currentSourceDescription()}")
+                    }
                 } else {
                     switchCarSourceToBluetooth()
                 }
@@ -1311,6 +1316,7 @@ class CarPlayController(
             true -> debugLog("car source: A2DP device connected")
         }
         debugLog("car source: BT music service ${Mg4BluetoothSource.connect(appContext)}")
+        debugLog("car source: current source before switch=${Mg4BluetoothSource.currentSourceDescription()}")
         var last = Mg4BluetoothSource.Result.NOT_CONNECTED
         repeat(SOURCE_SWITCH_ATTEMPTS) { attempt ->
             if (closed || phase != Phase.WIRELESS) return
@@ -1318,6 +1324,8 @@ class CarPlayController(
             when (last) {
                 Mg4BluetoothSource.Result.SWITCHED -> {
                     debugLog("car source: switched to BT Music (attempt ${attempt + 1})")
+                    Thread.sleep(SOURCE_SWITCH_SETTLE_MILLIS)
+                    debugLog("car source: current source after switch=${Mg4BluetoothSource.currentSourceDescription()}")
                     return
                 }
                 Mg4BluetoothSource.Result.BIND_REFUSED -> {
@@ -2427,6 +2435,8 @@ class CarPlayController(
 
         /** The BT music service binds asynchronously; give it a few seconds to answer. */
         private const val SOURCE_SWITCH_ATTEMPTS = 40
+        /** Lets the car's media service apply the switch before the source is read back. */
+        private const val SOURCE_SWITCH_SETTLE_MILLIS = 1_000L
         private const val SOURCE_SWITCH_RETRY_MILLIS = 250L
         private const val MAXIMUM_REENUMERATION_ATTEMPTS = 2
         private const val EXECUTOR_CLOSE_TIMEOUT_MILLIS = 2_000L
