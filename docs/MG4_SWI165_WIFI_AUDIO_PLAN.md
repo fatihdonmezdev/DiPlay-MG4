@@ -1,6 +1,6 @@
 # Plan: Wi-Fi audio on SWI165
 
-Status: steps 1, 2, 3.1, 4 and 5 are implemented in `0.2.9-mg4.64` and untested on the car. Step 3.2 is still pending.
+Status: steps 1, 2, 3.1, 4 and 5 are implemented. In `0.2.9-mg4.65` (2026-11-01) music played on the car over Wi-Fi without step 3.2, so 3.2 is not needed unless a later check fails. The rest of the car test checklist below is still to run.
 
 ## Goal
 
