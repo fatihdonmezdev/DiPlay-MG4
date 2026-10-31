@@ -1,5 +1,6 @@
 # MG4CPlay 0.2.9-mg4.65 (SWI165 fork), 2026-11-01
 
+- Bluetooth Music switch: connect to the car's media service when CarPlay starts instead of at the handoff, keep trying for up to 10 seconds, and record each outcome in the diagnostic report (bind refused, not connected, focus or play rejected). mg4.64 logs showed "never answered" after 3 seconds with no reason.
 - Fix the overlay video renderer and Wi-Fi audio switches not appearing. They had been added to an old settings menu that DiPlay no longer opens. They are now in DiPlay's settings: **Display and performance > Overlay video renderer** and **Audio routing > CarPlay audio over Wi-Fi (experimental)**.
 
 # MG4CPlay 0.2.9-mg4.64 (SWI165 fork), 2026-11-01

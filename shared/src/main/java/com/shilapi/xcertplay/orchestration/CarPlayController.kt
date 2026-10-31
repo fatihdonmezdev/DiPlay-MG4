@@ -881,6 +881,11 @@ class CarPlayController(
         var bringUpStep = "initialization"
         try {
             debugLog("wireless bring-up generation=$generation starting")
+            if (!bydOutputsEnabled && audioMode == AudioMode.HYBRID_BLUETOOTH) {
+                // Bind the car's BT music service now so it is up by the time the Wi-Fi
+                // handoff completes and the source switch runs.
+                debugLog("car source: BT music service ${Mg4BluetoothSource.connect(appContext)}")
+            }
             closeWirelessStack()
             if (
                 closed ||
@@ -1305,16 +1310,28 @@ class CarPlayController(
             null -> debugLog("car source: A2DP state unreadable; trying the switch anyway")
             true -> debugLog("car source: A2DP device connected")
         }
-        Mg4BluetoothSource.connect(appContext)
+        debugLog("car source: BT music service ${Mg4BluetoothSource.connect(appContext)}")
+        var last = Mg4BluetoothSource.Result.NOT_CONNECTED
         repeat(SOURCE_SWITCH_ATTEMPTS) { attempt ->
             if (closed || phase != Phase.WIRELESS) return
-            if (Mg4BluetoothSource.switchToBluetooth()) {
-                debugLog("car source: switched to BT Music (attempt ${attempt + 1})")
-                return
+            last = Mg4BluetoothSource.switchToBluetooth()
+            when (last) {
+                Mg4BluetoothSource.Result.SWITCHED -> {
+                    debugLog("car source: switched to BT Music (attempt ${attempt + 1})")
+                    return
+                }
+                Mg4BluetoothSource.Result.BIND_REFUSED -> {
+                    debugLog("car source: ${last.logText}; source left unchanged")
+                    return
+                }
+                else -> Unit
             }
             Thread.sleep(SOURCE_SWITCH_RETRY_MILLIS)
         }
-        debugLog("car source: BT Music service never answered; source left unchanged")
+        debugLog(
+            "car source: gave up after ${SOURCE_SWITCH_ATTEMPTS * SOURCE_SWITCH_RETRY_MILLIS / 1000}s: " +
+                "${last.logText}; source left unchanged",
+        )
     }
 
     /**
@@ -2409,7 +2426,7 @@ class CarPlayController(
         private const val BLUETOOTH_PROFILE_A2DP_SINK = 11
 
         /** The BT music service binds asynchronously; give it a few seconds to answer. */
-        private const val SOURCE_SWITCH_ATTEMPTS = 12
+        private const val SOURCE_SWITCH_ATTEMPTS = 40
         private const val SOURCE_SWITCH_RETRY_MILLIS = 250L
         private const val MAXIMUM_REENUMERATION_ATTEMPTS = 2
         private const val EXECUTOR_CLOSE_TIMEOUT_MILLIS = 2_000L
