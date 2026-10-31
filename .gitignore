@@ -25,6 +25,9 @@ Thumbs.db
 
 # Local beta credentials and release signing (never commit)
 .private/
+
+# Signed car builds from scripts/build_mg4.sh
+/dist/
 *.jks
 *.keystore
 release-signing.properties

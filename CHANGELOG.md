@@ -1,3 +1,12 @@
+# MG4CPlay 0.2.9-mg4.62 (SWI165 fork), 2026-11-01
+
+- Detect the MG4 firmware generation and apply SWI69 or SWI165 settings; unknown firmware keeps the previous behaviour.
+- SWI165: use the `com.saicmotor.hmi.launcher` stock launcher; the CarPlay-card shortcut stays off until that card is measured.
+- SWI165: draw CarPlay on the hardware video overlay (SurfaceView), like the stock AllGo CarPlay app, to fix the washed-out picture.
+- Add **Settings > Window > Overlay video renderer** to choose the video path on any firmware.
+- Build script passes the detected Android SDK to Gradle and writes the signed APK to `dist/`.
+- README and docs rewritten for this fork, with Mac build and USB-stick install steps.
+
 # DiPlay 0.2.8 — 2026-09-30
 
 - Keep iPhone location reporting active across the wireless Bluetooth-to-Wi-Fi CarPlay handoff; limit location updates to one per second on wireless and USB.

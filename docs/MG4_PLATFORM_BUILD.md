@@ -81,7 +81,7 @@ The build script (`scripts/build_mg4.sh` / `build_mg4.ps1`) performs the followi
 2. **Aligns Zip Structure**: Runs `zipalign -f 4` on the generated APK.
 3. **Platform Signs**: Signs the aligned APK using `apksigner` with `platform.pk8` and `platform.x509.pem`.
 4. **Verifies Signature**: Validates the output package signature with `apksigner verify`.
-5. **Delivers APK**: Copies the final signed APK to the parent directory.
+5. **Delivers APK**: Copies the final signed APK to `dist/` in the repository (git-ignored).
 
 ## Verification
 
@@ -89,7 +89,7 @@ The build script automatically verifies the signature. To manually check the out
 
 ```bash
 BUILD_TOOLS="${ANDROID_HOME}/build-tools/35.0.0"
-APK="../MG4CPlay-v0.2.9-mg4.48.apk"
+APK="dist/MG4CPlay-v0.2.9-mg4.62.apk"
 
 "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
 ```

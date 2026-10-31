@@ -72,7 +72,7 @@ export DIPLAY_AUTH_ASSETS_DIR="$PWD/.private/runtime-assets"
 ./scripts/build_mg4.sh
 ```
 
-The signed APK lands one folder above the repo as `MG4CPlay-v<version>.apk`. No
+The signed APK lands in `dist/MG4CPlay-v<version>.apk` (git-ignored). No
 Android Studio? Use `brew install openjdk@21` and set `JAVA_HOME` to
 `$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home`.
 
