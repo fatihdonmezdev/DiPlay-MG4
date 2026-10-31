@@ -20,6 +20,11 @@ else
   exit 1
 fi
 
+# Gradle reads ANDROID_HOME or local.properties, not the lookup above.
+if [ -n "$SDK" ] && [ ! -f "$ROOT/local.properties" ]; then
+  export ANDROID_HOME="$SDK"
+fi
+
 KEYS="${MG4_PLATFORM_KEYS_DIR:-$ROOT/tools}"
 if [ ! -f "$KEYS/platform.pk8" ]; then
   echo "Error: platform.pk8 not found in $KEYS. Set MG4_PLATFORM_KEYS_DIR to folder containing platform.pk8 & platform.x509.pem" >&2
