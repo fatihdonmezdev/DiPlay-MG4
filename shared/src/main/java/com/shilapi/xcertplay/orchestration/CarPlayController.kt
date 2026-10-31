@@ -20,7 +20,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
-import com.evsuite.hardware.saic.SaicMediaPlayer
+import com.shilapi.xcertplay.vehicle.Mg4BluetoothSource
 import com.shilapi.xcertplay.shared.R
 import com.shilapi.xcertplay.airplay.AirPlayConfig
 import com.shilapi.xcertplay.airplay.AirPlayContact
@@ -1295,10 +1295,10 @@ class CarPlayController(
             promptConnectBluetoothForAudio()
             return
         }
-        SaicMediaPlayer.connectBluetooth(appContext)
+        Mg4BluetoothSource.connect(appContext)
         repeat(SOURCE_SWITCH_ATTEMPTS) { attempt ->
             if (closed || phase != Phase.WIRELESS) return
-            if (SaicMediaPlayer.switchToBluetooth()) {
+            if (Mg4BluetoothSource.switchToBluetooth()) {
                 debugLog("car source: switched to BT Music (attempt ${attempt + 1})")
                 return
             }
