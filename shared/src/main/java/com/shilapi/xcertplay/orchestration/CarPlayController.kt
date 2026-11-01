@@ -153,7 +153,14 @@ class CarPlayController(
     private val locationProvider: Iap2LocationProvider? = null,
     private val vehicleStatusProvider: com.shilapi.xcertplay.transport.VehicleStatusProvider? = null,
     private val audioMode: AudioMode = AudioMode.HYBRID_BLUETOOTH,
+    /**
+     * Wi-Fi audio only: also release the car's hands-free (HFP) link so the iPhone has no
+     * Bluetooth route for calls and keeps them on CarPlay. Reconnected when CarPlay closes.
+     */
+    private val releaseHandsFree: Boolean = false,
 ) : Closeable {
+    @Volatile private var handsFreeReleased = false
+
     private val bydOutputsEnabled = !VehicleIntegration.isMg4(context.applicationContext)
 
     init {
@@ -439,6 +446,7 @@ class CarPlayController(
         }
         videoGate?.close()
         restoreBluetoothAfterWirelessCarPlay()
+        reconnectHandsFree()
         if (bydOutputsEnabled) {
             BydNavigationOutputs.endNow()
             BydNavigationOutputs.clearClusterStreamControl(::applyClusterUi)
@@ -2048,11 +2056,40 @@ class CarPlayController(
                 if (closed || phase != Phase.WIRELESS) return@Thread
                 releaseBluetoothProfile(adapter, device, BLUETOOTH_PROFILE_A2DP_SINK, "A2DP sink", index + 1)
                 releaseBluetoothProfile(adapter, device, BLUETOOTH_PROFILE_AVRCP_CONTROLLER, "AVRCP", index + 1)
+                if (releaseHandsFree) {
+                    handsFreeReleased = true
+                    releaseBluetoothProfile(adapter, device, BLUETOOTH_PROFILE_HEADSET_CLIENT, "Hands-free", index + 1)
+                }
             }, "car-bt-music-release-${index + 1}").apply {
                 isDaemon = true
                 start()
             }
         }
+    }
+
+    /** Gives the car its hands-free link back after a CarPlay-only calls session. */
+    private fun reconnectHandsFree() {
+        if (!handsFreeReleased) return
+        handsFreeReleased = false
+        if (Build.VERSION.SDK_INT != Build.VERSION_CODES.P) return
+        val adapter = bluetoothAdapter ?: return
+        val device = wirelessBluetoothDevice ?: return
+        val listener = object : BluetoothProfile.ServiceListener {
+            override fun onServiceConnected(profileId: Int, proxy: BluetoothProfile) {
+                try {
+                    val connect = proxy.javaClass.getMethod("connect", BluetoothDevice::class.java)
+                    val result = connect.invoke(proxy, device) as? Boolean
+                    debugLog("car Bluetooth: hands-free reconnect requested result=$result")
+                } catch (error: Throwable) {
+                    debugLog("car Bluetooth: hands-free reconnect failed: ${error.javaClass.simpleName}")
+                } finally {
+                    adapter.closeProfileProxy(profileId, proxy)
+                }
+            }
+
+            override fun onServiceDisconnected(profileId: Int) = Unit
+        }
+        runCatching { adapter.getProfileProxy(appContext, listener, BLUETOOTH_PROFILE_HEADSET_CLIENT) }
     }
 
     private fun releaseBluetoothProfile(
@@ -2406,6 +2443,8 @@ class CarPlayController(
         private const val WIRELESS_HANDOFF_TIMEOUT_MILLIS = 45_000L
         private const val RFCOMM_CONNECT_TIMEOUT_MILLIS = 15_000L
         private const val BLUETOOTH_PROFILE_AVRCP_CONTROLLER = 12
+        // BluetoothProfile.HEADSET_CLIENT (hidden): the head unit's hands-free side.
+        private const val BLUETOOTH_PROFILE_HEADSET_CLIENT = 16
 
         /** Hidden `BluetoothProfile.A2DP_SINK` on Android 9: the role a head unit plays. */
         private const val BLUETOOTH_PROFILE_A2DP_SINK = 11

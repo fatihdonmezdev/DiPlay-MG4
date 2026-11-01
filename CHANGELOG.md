@@ -1,3 +1,8 @@
+# MG4CPlay 0.2.9-mg4.72 (SWI165 fork), 2026-11-01
+
+- New **Audio routing > Calls over CarPlay only** switch (off by default). With Wi-Fi audio, it also disconnects the car's hands-free (HFP) link to the iPhone after handoff, as factory wireless CarPlay does, so the iPhone can't send calls over Bluetooth. The car's own phone screen and call button don't work while CarPlay runs. DiPlay asks the car to reconnect hands-free when CarPlay closes. Each release and reconnect is logged.
+- Fix the mg4.71 build: the About screen's update section referred to the settings screen's MG4 check.
+
 # MG4CPlay 0.2.9-mg4.71 (SWI165 fork), 2026-11-01
 
 - Diagnostics for audio loss: every 5 s while packets are missing, the log records resend requests sent to the iPhone, packets recovered, whether resends could be sent at all, and the car's own network counters (UDP receive errors and buffer overflows, and `ap0` hotspot drops and errors). This tells Wi-Fi loss in the air apart from loss inside the head unit. mg4.70 lost about 1 in 7 music packets and half the call packets before they reached DiPlay.

@@ -338,6 +338,10 @@ class DiPlayActivity : ComponentActivity() {
                 AirPlayPersistence.saveAudioMode(this,
                     if (it) com.shilapi.xcertplay.media.AudioMode.CARPLAY_WIFI else com.shilapi.xcertplay.media.AudioMode.HYBRID_BLUETOOTH)
             }
+            toggle(card, getString(R.string.calls_over_carplay_only), getString(R.string.calls_over_carplay_only_description),
+                AirPlayPersistence.loadCallsOverCarPlayOnly(this)) {
+                AirPlayPersistence.saveCallsOverCarPlayOnly(this, it)
+            }
             if (!mg4) toggle(card, getString(R.string.contrib_audio_home_toggle_audio_focus), getString(R.string.contrib_audio_home_toggle_audio_focus_desc), AirPlayPersistence.loadAudioFocusEnabled(this)) { AirPlayPersistence.saveAudioFocusEnabled(this, it) }
             if (!mg4 && resources.getBoolean(R.bool.config_advanced_audio_channel_mapping)) {
                 toggle(card, getString(R.string.advanced_audio_channel_mapping),

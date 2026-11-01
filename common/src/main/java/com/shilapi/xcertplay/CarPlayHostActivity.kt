@@ -3259,6 +3259,8 @@ class CarPlayHostActivity : ComponentActivity() {
                 null
             },
             audioMode = sessionAudioMode,
+            releaseHandsFree = sessionAudioMode == com.shilapi.xcertplay.media.AudioMode.CARPLAY_WIFI &&
+                AirPlayPersistence.loadCallsOverCarPlayOnly(this),
         )
         controller = next
         armStartupWatchdog()

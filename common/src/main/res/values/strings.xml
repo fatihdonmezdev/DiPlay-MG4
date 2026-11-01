@@ -215,6 +215,8 @@
     <string name="hevc_h_265_video_transport">HEVC H.265 video transport</string>
     <string name="hevc_software_decoder">HEVC software decoder</string>
     <string name="overlay_video_renderer">Overlay video renderer</string>
+    <string name="calls_over_carplay_only">Calls over CarPlay only</string>
+    <string name="calls_over_carplay_only_description">With CarPlay audio over Wi-Fi, also disconnects the car’s hands-free Bluetooth while CarPlay runs, so the iPhone keeps calls on CarPlay. The car’s own phone screen and call button don’t work during that time. Hands-free reconnects when CarPlay closes. Applies next time CarPlay connects.</string>
     <string name="plain_display_area">Square corners (test)</string>
     <string name="plain_display_area_description">Describes the screen to the iPhone the way the car’s own CarPlay app does, without view areas. Try it if CarPlay shows rounded black corners. Turn off if the picture is cropped or misplaced. Applies next time CarPlay opens.</string>
     <string name="overlay_video_renderer_description">Draws CarPlay on the display’s video overlay, like the car’s own CarPlay app. Turn off if the picture flickers or stays black. Applies next time CarPlay opens.</string>
