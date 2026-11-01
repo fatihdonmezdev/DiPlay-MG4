@@ -49,6 +49,11 @@ class AudioStream(
     private val decryptedPackets = AtomicInteger()
     private val authenticationFailures = AtomicInteger()
     private val resendRequestSequence = AtomicInteger()
+    private val resendRequests = AtomicInteger()
+    private val resendPackets = AtomicInteger()
+    private val resendNoPeer = AtomicInteger()
+    private val recoveredPackets = AtomicInteger()
+    private var lastLossReportNs = 0L
     private var dataSocket: DatagramSocket? = null
     private var controlSocket: DatagramSocket? = null
     private var dataThread: Thread? = null
@@ -179,8 +184,12 @@ class AudioStream(
                 listener.onPacket(wire, rtp, sample, null)
                 deliverOrdered(DecodedPacket(sequence, rtp, sample), listener)
                 stats.processed()
+                reportLossIfDue()
             }
-        } finally { stats.flush(ended = true) }
+        } finally {
+            stats.flush(ended = true)
+            reportLossIfDue(force = true)
+        }
     }
 
     private fun runControl(socket: DatagramSocket, listener: Listener) {
@@ -218,8 +227,28 @@ class AudioStream(
             return
         }
         val rtp = wire.copyOf(RTP_HEADER_LEN) + payload
+        recoveredPackets.incrementAndGet()
         listener.onPacket(wire, rtp, sample, null)
         deliverOrdered(DecodedPacket(sequence, rtp, sample), listener)
+    }
+
+    /**
+     * Every 5 s while packets are being lost: resend requests, recovered packets and the car's
+     * own network counters, so the log shows whether loss is in the air or inside the head unit.
+     */
+    private fun reportLossIfDue(force: Boolean = false) {
+        val now = System.nanoTime()
+        if (lastLossReportNs == 0L) lastLossReportNs = now
+        if (!force && now - lastLossReportNs < LOSS_REPORT_NS) return
+        lastLossReportNs = now
+        val requests = resendRequests.getAndSet(0)
+        val noPeer = resendNoPeer.getAndSet(0)
+        if (requests == 0 && noPeer == 0 && !force) return
+        onDiagnostic(
+            "Audio loss type=$streamType resendRequests=$requests resendPackets=${resendPackets.getAndSet(0)} " +
+                "noControlPeer=$noPeer recovered=${recoveredPackets.getAndSet(0)} " +
+                "authFailures=${authenticationFailures.get()} ${NetCounters.delta()}",
+        )
     }
 
     private fun deliverOrdered(packet: DecodedPacket, listener: Listener) {
@@ -274,7 +303,12 @@ class AudioStream(
 
     private fun requestResend(firstMissing: Int, count: Int) {
         val socket = controlSocket ?: return
-        val peer = controlPeer ?: return
+        val peer = controlPeer ?: run {
+            resendNoPeer.incrementAndGet()
+            return
+        }
+        resendRequests.incrementAndGet()
+        resendPackets.addAndGet(count)
         val requestSequence = resendRequestSequence.incrementAndGet() and 0xffff
         val request = byteArrayOf(
             0x80.toByte(), 0xd5.toByte(),
@@ -318,6 +352,7 @@ class AudioStream(
         const val MAX_RESEND_PACKETS = 128
         const val MAX_PENDING_PACKETS = 32
         const val REORDER_WAIT_NS = 300_000_000L
+        const val LOSS_REPORT_NS = 5_000_000_000L
     }
 }
 

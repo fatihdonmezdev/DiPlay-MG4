@@ -328,6 +328,8 @@
     <string name="right_hand_drive">Right-hand drive</string>
     <string name="running">Running</string>
     <string name="s_0_3x">0.3x</string>
+    <string name="music_buffer_500">500 ms</string>
+    <string name="music_buffer_750_default">750 ms · default</string>
     <string name="s_1000_ms_most_stable">1000 ms · most stable</string>
     <string name="s_1_0x">1.0x</string>
     <string name="s_1_choose_your_connection">1 · Choose your connection</string>

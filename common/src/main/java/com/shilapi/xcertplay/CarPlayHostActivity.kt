@@ -477,12 +477,14 @@ class CarPlayHostActivity : ComponentActivity() {
         displayScaleTenths = AirPlayPersistence.loadDisplayScaleTenths(this)
         // Size is now chosen only through CarPlaySize; ignore the canvas scale older builds stored.
         uiScalePercent = CarPlayUiScale.DEFAULT
-        hevcEnabled = AirPlayPersistence.loadHevcEnabled(this)
+        val mg4 = Mg4FirmwareProfile.detect().isMg4
+        // HEVC is proven on SWI69 and SWI165; MG4 builds no longer offer the switch.
+        hevcEnabled = mg4 || AirPlayPersistence.loadHevcEnabled(this)
         hevcSoftwareDecoderEnabled =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
                 AirPlayPersistence.loadHevcSoftwareDecoderEnabled(this)
         advancedAudioChannelMapping =
-            advancedAudioChannelMappingSupported &&
+            !Mg4FirmwareProfile.detect().isMg4 && advancedAudioChannelMappingSupported &&
                 AirPlayPersistence.loadAdvancedAudioChannelMapping(this)
         navigationStreamType = AirPlayPersistence.loadNavigationStreamType(this)
         debugLogsEnabled = AirPlayPersistence.loadDebugLogsEnabled(this)
@@ -616,7 +618,7 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         wirelessPermissionsReady = !wirelessEnabled || hasRequiredWirelessPermissions()
         advancedAudioChannelMapping =
-            advancedAudioChannelMappingSupported &&
+            !Mg4FirmwareProfile.detect().isMg4 && advancedAudioChannelMappingSupported &&
                 AirPlayPersistence.loadAdvancedAudioChannelMapping(this)
         if (DiLink51ClusterLayout.automatic(this) && clusterMonitor == null) {
             clusterMonitor = DiLink51ClusterMonitor(this, ::onClusterActivityState).also { it.start() }
@@ -3025,9 +3027,10 @@ class CarPlayHostActivity : ComponentActivity() {
             videoHeight = videoHeight,
             preferSoftwareHevcDecoder = hevcSoftwareDecoderEnabled,
             advancedAudioChannelMapping = advancedAudioChannelMapping,
-            audioFocusEnabled = AirPlayPersistence.loadAudioFocusEnabled(this),
+            // MG4: Wi-Fi audio takes focus itself; Bluetooth Music must leave it to the car.
+            audioFocusEnabled = !Mg4FirmwareProfile.detect().isMg4 && AirPlayPersistence.loadAudioFocusEnabled(this),
             audioMode = sessionAudioMode,
-            mediaChannel = AirPlayPersistence.loadMediaAudioChannel(this),
+            mediaChannel = if (Mg4FirmwareProfile.detect().isMg4) 0 else AirPlayPersistence.loadMediaAudioChannel(this),
             navigationChannel = AirPlayPersistence.loadNavigationAudioChannel(this),
             context = this,
             navigationStreamType = navigationStreamType,

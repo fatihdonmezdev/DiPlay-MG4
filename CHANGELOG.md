@@ -1,3 +1,9 @@
+# MG4CPlay 0.2.9-mg4.71 (SWI165 fork), 2026-11-01
+
+- Diagnostics for audio loss: every 5 s while packets are missing, the log records resend requests sent to the iPhone, packets recovered, whether resends could be sent at all, and the car's own network counters (UDP receive errors and buffer overflows, and `ap0` hotspot drops and errors). This tells Wi-Fi loss in the air apart from loss inside the head unit. mg4.70 lost about 1 in 7 music packets and half the call packets before they reached DiPlay.
+- Settings tidied for MG4. Hidden because the firmware profile sets them: efficient video (HEVC is now always on for MG4), audio focus (Wi-Fi audio takes it; Bluetooth Music must not), advanced audio channel mapping and the music audio channel (MG4 uses the music stream), and in-app updates (they offered upstream builds without this fork's changes). Navigation audio channel stays until Maps prompts are tested.
+- Fix the music buffer labels. They read 300, 500 and 1000 ms but set 500, 750 and 1000 ms. They now read 500 ms, 750 ms (default) and 1000 ms.
+
 # MG4CPlay 0.2.9-mg4.70 (SWI165 fork), 2026-11-01
 
 - Test switch for the rounded black corners the iPhone draws on CarPlay (the stock CarPlay app shows square corners). **Display and performance > Square corners (test)** describes the screen without view areas, the way older factory receivers do. Off by default; the log's video renderer line records `viewAreas=true|false`.
