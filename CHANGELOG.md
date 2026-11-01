@@ -1,3 +1,8 @@
+# MG4CPlay 0.2.9-mg4.73 (SWI165 fork), 2026-11-01
+
+- Microphone diagnostics: every 5 s while the microphone runs (calls and Siri), the log records frames sent, audio time against real time, Opus encode time (average and worst), the longest wait for the microphone and the bitrate. If encoding can't keep up on the head unit, the delay grows over a call, and this line shows it.
+- Software Opus encoder effort lowered (complexity 5 to 3) so each 20 ms frame encodes well within real time. mg4.70 testing found the microphone laggy compared with USB CarPlay.
+
 # MG4CPlay 0.2.9-mg4.72 (SWI165 fork), 2026-11-01
 
 - New **Audio routing > Calls over CarPlay only** switch (off by default). With Wi-Fi audio, it also disconnects the car's hands-free (HFP) link to the iPhone after handoff, as factory wireless CarPlay does, so the iPhone can't send calls over Bluetooth. The car's own phone screen and call button don't work while CarPlay runs. DiPlay asks the car to reconnect hands-free when CarPlay closes. Each release and reconnect is logged.

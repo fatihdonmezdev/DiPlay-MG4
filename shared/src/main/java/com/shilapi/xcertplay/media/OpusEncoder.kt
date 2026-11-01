@@ -185,7 +185,8 @@ internal class OpusEncoder(bitrate: Int) : Closeable {
         const val FIRST_PACKET_LOG_COUNT = 3
         const val FRAME_SAMPLES = SAMPLE_RATE / 50
         const val MAX_PACKET_BYTES = 1_275
-        // Keeps the head unit's CPU free for video; voice quality is still good at this level.
-        const val SOFTWARE_COMPLEXITY = 5
+        // Low effort keeps each 20 ms frame well inside real time on the MT2712; at this
+        // bitrate voice quality is still good. Encode timing is in the microphone stats line.
+        const val SOFTWARE_COMPLEXITY = 3
     }
 }

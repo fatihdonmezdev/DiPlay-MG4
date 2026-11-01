@@ -274,7 +274,7 @@ class AndroidMediaSink(
     }
 
     override fun onMicrophoneStarted(id: AudioStreamId, config: MicrophoneConfig) {
-        val uplink = microphoneUplinks.computeIfAbsent(id) { MicrophoneUplink(config) }
+        val uplink = microphoneUplinks.computeIfAbsent(id) { MicrophoneUplink(config, onAudioDiagnostic) }
         val started = uplink.start()
         onAudioDiagnostic(
             "Microphone ${config.audioType}: ${if (started) "started" else "failed"} " +
