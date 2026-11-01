@@ -2076,6 +2076,9 @@ class CarPlayController(
                     val disconnect = proxy.javaClass.getMethod("disconnect", BluetoothDevice::class.java)
                     val result = disconnect.invoke(proxy, device) as? Boolean
                     debugLog("car Bluetooth music: $name release attempt=$attempt result=$result")
+                } catch (_: NoSuchMethodException) {
+                    // SWI165's AVRCP controller has no disconnect; it drops with the A2DP sink.
+                    debugLog("car Bluetooth music: $name has no disconnect on this firmware; follows A2DP sink attempt=$attempt")
                 } catch (error: Throwable) {
                     debugLog("car Bluetooth music: $name release failed attempt=$attempt: ${error.javaClass.simpleName}")
                 } finally {

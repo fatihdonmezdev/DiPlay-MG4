@@ -1,3 +1,9 @@
+# MG4CPlay 0.2.9-mg4.68 (SWI165 fork), 2026-11-01
+
+- Calls: the call audio player stalled on every call in mg4.65 and mg4.66. Call audio arrived from the iPhone and the player was set up, but it never logged stats, focus or an error, even when the call ended, so it was stuck before playing anything. Calls and Siri now write to the car's audio output without waiting, so a car output that never starts can no longer hang the stream. Music is unchanged.
+- The diagnostic log now records each step of every audio stream: decoder ready or failed, audio focus requested, kept or not requested, first sound decoded, playback started, the first write error, and a summary when the stream ends. If a stream has not started playing after 6 seconds, the log names the step it is stuck on.
+- AVRCP on SWI165 has no disconnect command. The log now says so instead of reporting `NoSuchMethodException`; AVRCP still drops with the A2DP sink.
+
 # MG4CPlay 0.2.9-mg4.67 (SWI165 fork), 2026-11-01
 
 - Fix the call microphone on Android 9. DiPlay offered Opus for microphone input, so the iPhone chose it for calls, but Android 9 has no Opus encoder and the microphone never started (`Microphone telephony: failed`, codec OPUS, in mg4.66). Opus input is now offered only when the head unit has an Opus encoder; otherwise the iPhone sends plain PCM.

@@ -60,9 +60,14 @@ internal class AudioFocusCoordinator(
         // Focus is only taken when the user asked for it. The MG4 override that used to force it
         // on assumed the classic Bluetooth radio was shut down after handoff; in hybrid mode the
         // radio stays up, so grabbing focus here makes the factory AVRCP owner pause the music.
-        if (!enabled || manager == null || channel == AudioChannel.NAVIGATION) return
+        if (!enabled || manager == null || channel == AudioChannel.NAVIGATION) {
+            if (channel != AudioChannel.NAVIGATION) {
+                runCatching { report("Audio: focus not requested channel=$channel enabled=$enabled") }
+            }
+            return
+        }
         active[track] = Entry(channel, attributes)
-        refreshRequest()
+        refreshRequest(channel)
     }
 
     @Synchronized
@@ -70,7 +75,7 @@ internal class AudioFocusCoordinator(
         if (active.remove(track) != null) refreshRequest()
     }
 
-    private fun refreshRequest() {
+    private fun refreshRequest(added: AudioChannel? = null) {
         val primary = active.values.maxByOrNull { it.channel.focusPriority() }
         if (primary == null) {
             request?.let { manager?.abandonAudioFocusRequest(it) }
@@ -78,7 +83,12 @@ internal class AudioFocusCoordinator(
             requestedChannel = null
             return
         }
-        if (request != null && requestedChannel == primary.channel) return
+        if (request != null && requestedChannel == primary.channel) {
+            if (added != null) {
+                runCatching { report("Audio: focus kept channel=${primary.channel} for $added activeTracks=${active.size}") }
+            }
+            return
+        }
         request?.let { manager?.abandonAudioFocusRequest(it) }
         val gain = when (primary.channel) {
             AudioChannel.MEDIA -> AudioManager.AUDIOFOCUS_GAIN
@@ -718,7 +728,12 @@ private class AudioRenderer(
     private var codec: MediaCodec? = null
     private var track: AudioTrack? = null
     private var pcm = ByteArray(64 * 1024)
-    private var playbackStarted = false
+    @Volatile private var playbackStarted = false
+    /** Last step the worker reached, so a stalled stream says where it stopped. */
+    @Volatile private var stage = "waiting to start"
+    private val startedNs = AtomicLong()
+    private var firstPcmReported = false
+    private var writeErrorReported = false
     private var prebufferBytes = 0
     private var startThresholdBytes = 0
     private var fadeApplied = false
@@ -756,7 +771,25 @@ private class AudioRenderer(
     fun start() {
         if (started) return
         started = true
+        startedNs.set(System.nanoTime())
         thread.start()
+        Thread({
+            try {
+                Thread.sleep(STALL_REPORT_MILLIS)
+            } catch (_: InterruptedException) {
+                return@Thread
+            }
+            if (running && !playbackStarted) {
+                report(
+                    "Audio: stalled audioType=${format.audioType} codec=${format.codec} stage=$stage " +
+                        "after=${STALL_REPORT_MILLIS}ms packetsQueued=${queue.size} decoderInputs=$inputQueued " +
+                        "decoderOutputs=$outputBuffers writtenFrames=$totalWrittenFrames",
+                )
+            }
+        }, "carplay-audio-watchdog").apply {
+            isDaemon = true
+            start()
+        }
     }
 
     fun submit(rtp: ByteArray, sample: Int) {
@@ -783,13 +816,17 @@ private class AudioRenderer(
 
     private fun run() {
         try {
+            stage = "decoder setup"
             when (format.codec) {
                 AudioCodecKind.AAC_LC -> configureCodec(MediaFormat.MIMETYPE_AUDIO_AAC)
                 AudioCodecKind.OPUS -> configureCodec(MediaFormat.MIMETYPE_AUDIO_OPUS)
                 AudioCodecKind.LPCM -> Unit
             }
+            stage = "track setup"
             createTrack()
+            stage = "audio focus request"
             requestAudioFocus()
+            stage = "waiting for first packet"
             while (running) {
                 queue.poll(AUDIO_POLL_MILLIS, TimeUnit.MILLISECONDS)?.let(::handle)
                 // Output becomes ready asynchronously, including after the last packet of a burst.
@@ -808,6 +845,13 @@ private class AudioRenderer(
             }
         } finally {
             runCatching { logStatsIfDue(force = true) }
+            runCatching {
+                report(
+                    "Audio: renderer ended audioType=${format.audioType} stage=$stage " +
+                        "playing=$playbackStarted decoderInputs=$inputQueued decoderOutputs=$outputBuffers " +
+                        "writtenFrames=$totalWrittenFrames",
+                )
+            }
             release()
         }
     }
@@ -839,9 +883,14 @@ private class AudioRenderer(
                 it.configure(mediaFormat, null, null, 0)
                 it.start()
                 Log.i(TAG, "audio decoder configured mime=$mime name=${it.name}")
+                report("Audio: decoder ready audioType=${format.audioType} name=${it.name}")
             }
         } catch (error: Exception) {
             Log.e(TAG, "audio decoder configuration failed mime=$mime", error)
+            report(
+                "Audio: decoder failed audioType=${format.audioType} mime=$mime " +
+                    "error=${error.javaClass.simpleName}: ${error.message}",
+            )
             null
         }
     }
@@ -1113,7 +1162,11 @@ private class AudioRenderer(
         (sample.toLong() and 0xffff_ffffL) * 1_000_000L / format.sampleRate
 
     private fun feedCodec(payload: ByteArray, presentationTimeUs: Long) {
-        val codec = codec ?: return
+        val codec = codec ?: run {
+            stage = "no decoder; packets discarded"
+            return
+        }
+        if (inputQueued == 0) stage = "decoding first packet"
         val index = codec.dequeueInputBuffer(INPUT_TIMEOUT_US)
         if (index < 0) {
             inputDropped++
@@ -1196,9 +1249,25 @@ private class AudioRenderer(
                     "head=${data.copyOfRange(offset, end).toHexString()}",
             )
         }
+        if (!firstPcmReported && length > 0) {
+            firstPcmReported = true
+            report(
+                "Audio: first sound decoded audioType=${format.audioType} bytes=$length " +
+                    "afterMs=${(System.nanoTime() - startedNs.get()) / 1_000_000L}",
+            )
+        }
+        if (!playbackStarted) stage = "writing to the car's audio output"
         if (!fadeApplied) {
             applyFadeIn(data, offset, length)
             fadeApplied = true
+        }
+        // A blocking write waits for the output to drain. If the car never starts the call
+        // output, a call stream hangs there for good with no log (mg4.66). Calls and Siri drop
+        // what does not fit instead; music keeps blocking writes for smooth playback.
+        val writeMode = if (mappedChannel == AudioChannel.MEDIA || mappedChannel == AudioChannel.NAVIGATION) {
+            AudioTrack.WRITE_BLOCKING
+        } else {
+            AudioTrack.WRITE_NON_BLOCKING
         }
         var written = 0
         while (written < length && running) {
@@ -1208,11 +1277,15 @@ private class AudioRenderer(
                 minOf(length - written, PREBUFFER_WRITE_CHUNK_BYTES)
             }
             val writeStarted = System.nanoTime()
-            val count = track.write(data, offset + written, writeLength, AudioTrack.WRITE_BLOCKING)
+            val count = track.write(data, offset + written, writeLength, writeMode)
             maxWriteMs = maxOf(maxWriteMs, (System.nanoTime() - writeStarted) / 1_000_000L)
             if (count < 0) {
                 writeErrorsThisWindow++
                 lastWriteErrorCode = count
+                if (!writeErrorReported) {
+                    writeErrorReported = true
+                    report("Audio: write error audioType=${format.audioType} code=$count")
+                }
                 break
             }
             if (count == 0) {
@@ -1237,8 +1310,14 @@ private class AudioRenderer(
     }
 
     private fun startPlayback(track: AudioTrack) {
+        stage = "starting playback"
         track.play()
         playbackStarted = true
+        stage = "playing"
+        report(
+            "Audio: playback started audioType=${format.audioType} playState=${track.playState} " +
+                "afterMs=${(System.nanoTime() - startedNs.get()) / 1_000_000L}",
+        )
     }
 
     private fun maintainPlaybackBuffer() {
@@ -1375,5 +1454,6 @@ private class AudioRenderer(
         const val STATS_TAG = "DiPlay-AudioStats"
         const val STATS_WINDOW_NS = 5_000_000_000L
         const val DECODED_BUFFER_LOG_INTERVAL = 50
+        const val STALL_REPORT_MILLIS = 6_000L
     }
 }
