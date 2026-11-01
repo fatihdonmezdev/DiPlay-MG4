@@ -18,7 +18,7 @@ jobs:
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ env.TAG }}
           submodules: recursive
@@ -47,21 +47,21 @@ jobs:
           test -d "$assets/offline-mfi" || { echo "::error::Secret archive has no offline-mfi/ folder"; exit 1; }
           echo "MG4_PLATFORM_KEYS_DIR=$keys" >> "$GITHUB_ENV"
           echo "DIPLAY_AUTH_ASSETS_DIR=$assets" >> "$GITHUB_ENV"
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '25'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
           packages: platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;28.2.13676358
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Build platform-signed APK
         run: ./scripts/build_mg4.sh
       - name: Remove keys and identity
         if: always()
         run: rm -rf "$RUNNER_TEMP/keys" "$RUNNER_TEMP/runtime-assets"
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.TAG }}
           name: MG4CPlay ${{ env.VERSION }}
