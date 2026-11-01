@@ -1,16 +1,45 @@
 name: Release
 on:
   push:
-    tags: ['mg4.*']
+    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release (e.g. v0.2.9-mg4.84)'
+        required: true
 permissions:
   contents: write
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
 jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.TAG }}
+      - name: Check tag matches versionName
+        run: |
+          version=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' mobile/build.gradle.kts | head -1)
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::Tag $TAG does not match versionName $version in mobile/build.gradle.kts"
+            exit 1
+          fi
+      - name: Check signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=0
+          for name in KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::Repository secret for $name is not set"; missing=1; fi
+          done
+          exit $missing
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -31,11 +60,13 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew :mobile:assembleRelease --stacktrace
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: mobile/build/outputs/apk/release/*.apk
-          generate_release_notes: true
       - name: Remove keystore
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks"
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          files: mobile/build/outputs/apk/release/*.apk
+          fail_on_unmatched_files: true
+          generate_release_notes: true
