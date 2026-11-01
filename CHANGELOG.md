@@ -1,5 +1,6 @@
 # MG4CPlay 0.2.9-mg4.66 (SWI165 fork), 2026-11-01
 
+- Wi-Fi audio: steering-wheel next and previous now control CarPlay. On SWI165 the wheel keys arrive as a SystemUI broadcast handled by the car's MediaService, not as Android media keys, so DiPlay listens for that broadcast while CarPlay runs. Every wheel key is logged; mute and volume stay with the car.
 - Wi-Fi audio is now the default on SWI165 (other firmware keeps Bluetooth music). The switch under Audio routing is no longer marked experimental and still turns it off.
 - In Wi-Fi audio mode, disconnect the car’s Bluetooth music (A2DP and AVRCP) from the iPhone once CarPlay is up, as factory wireless CarPlay does when the phone asks. Hands-free stays connected and pairing is untouched. This replaces an unused upstream release that switched the whole Bluetooth radio off.
 - Wi-Fi audio: fix silent phone calls. With audio over Wi-Fi the iPhone sends calls to CarPlay, and the car did not play call audio from DiPlay. On Android 9 call audio now uses the music stream (which reaches the speakers), and the microphone falls back to the plain mic if the car refuses the call-processing source. The log records the microphone source and call audio route.

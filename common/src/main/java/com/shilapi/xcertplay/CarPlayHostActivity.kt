@@ -3254,7 +3254,7 @@ class CarPlayHostActivity : ComponentActivity() {
         )
         controller = next
         armStartupWatchdog()
-        CarPlayMediaKeys.attach(this, next)
+        CarPlayMediaKeys.attach(this, next, sessionAudioMode == AudioMode.CARPLAY_WIFI) { appendLog(it) }
         if (airPlayConfig.videoInCar) CarPlayVideo.attach(this, next)
         CarPlayBackgroundSession.store(next, renderer, size.width, size.height, this) { completion ->
             runOnUiThread {

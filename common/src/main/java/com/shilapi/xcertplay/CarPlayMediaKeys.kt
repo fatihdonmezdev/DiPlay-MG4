@@ -1,7 +1,9 @@
 package com.shilapi.xcertplay
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -34,12 +36,35 @@ internal object CarPlayMediaKeys {
     private var focusRequest: AudioFocusRequest? = null
     private var focusHeld = false
     private var appContext: Context? = null
+    private var hardKeyReceiver: BroadcastReceiver? = null
+    private var report: (String) -> Unit = {}
 
+    /**
+     * MG4 SWI165 steering-wheel keys do not arrive as Android media keys. SystemUI broadcasts
+     * them and the car's MediaService (`HardKeyMonitor`) drives the current car source. Read from
+     * MediaService_eh32_aus_local_P: KEY_CODE 1 volume up, 2 volume down, 3 mute, 4 previous,
+     * 5 next; DOWN and LONG_PRESS booleans. A short press acts on release (DOWN=false).
+     */
+    private const val ACTION_HARD_KEY_EVENT = "com.android.systemui.ACTION_HARD_KEY_EVENT"
+    private const val HARD_KEY_PREVIOUS = 4
+    private const val HARD_KEY_NEXT = 5
+
+    /**
+     * @param wifiAudio CarPlay music plays through DiPlay (Wi-Fi audio). The car's Bluetooth
+     * player no longer receives the wheel keys, so DiPlay listens for the MG4 hard-key broadcast.
+     */
     @Synchronized
-    fun attach(context: Context, next: CarPlayController) {
+    fun attach(
+        context: Context,
+        next: CarPlayController,
+        wifiAudio: Boolean = false,
+        log: (String) -> Unit = {},
+    ) {
         if (controller !== next) releaseLocked()
         appContext = context.applicationContext
         controller = next
+        report = log
+        if (wifiAudio && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) registerHardKeysLocked()
         // AUTUS/SAIC's Android 9 Bluetooth stack treats even an active MediaSession (without an
         // audio-focus request) as the current AVRCP player.  Registering it while the same phone
         // is the wireless CarPlay source makes the factory stack send pause back to the iPhone.
@@ -121,7 +146,39 @@ internal object CarPlayMediaKeys {
         Log.i(TAG, "media keys active focusGranted=$focusHeld android9Bypass=${Build.VERSION.SDK_INT <= Build.VERSION_CODES.P}")
     }
 
+    private fun registerHardKeysLocked() {
+        if (hardKeyReceiver != null) return
+        val context = appContext ?: return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) = onHardKey(intent)
+        }
+        val registered = runCatching { context.registerReceiver(receiver, IntentFilter(ACTION_HARD_KEY_EVENT)) }
+            .onFailure { report("Wheel keys: hard-key receiver failed: ${it.javaClass.simpleName}") }
+            .isSuccess
+        if (registered) {
+            hardKeyReceiver = receiver
+            report("Wheel keys: listening for MG4 hard-key broadcasts")
+        }
+    }
+
+    private fun onHardKey(intent: Intent) {
+        val keyCode = intent.getIntExtra("KEY_CODE", -1)
+        val down = intent.getBooleanExtra("DOWN", false)
+        val longPress = intent.getBooleanExtra("LONG_PRESS", false)
+        val index = when (keyCode) {
+            HARD_KEY_NEXT -> CarPlayMediaButton.NEXT
+            HARD_KEY_PREVIOUS -> CarPlayMediaButton.PREVIOUS
+            else -> null
+        }
+        // Act once per short press, on release, as the car's own HardKeyMonitor does.
+        val act = index != null && !down && !longPress
+        report("Wheel key: code=$keyCode down=$down long=$longPress${if (act) " -> CarPlay" else ""}")
+        if (act) send(index!!, "MG4 wheel $keyCode")
+    }
+
     private fun releaseLocked() {
+        hardKeyReceiver?.let { receiver -> runCatching { appContext?.unregisterReceiver(receiver) } }
+        hardKeyReceiver = null
         session?.let {
             it.isActive = false
             it.release()
