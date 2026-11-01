@@ -44,6 +44,7 @@ object AirPlayPersistence {
     private const val KEY_CALLS_CARPLAY_ONLY = "calls_over_carplay_only"
     private const val KEY_MIC_SOURCE = "microphone_source"
     private const val KEY_VIDEO_COLOUR_RANGE = "video_colour_range"
+    private const val KEY_CLUSTER_DIRECTIONS = "mg4_cluster_directions"
     private const val KEY_AUDIO_MODE = "audio_mode"
     private const val KEY_ADVANCED_AUDIO_CHANNEL_MAPPING = "advanced_audio_channel_mapping"
     private const val KEY_AUDIO_FOCUS_ENABLED = "audio_focus_enabled"
@@ -148,6 +149,16 @@ object AirPlayPersistence {
     fun saveSurfaceVideoRenderer(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_SURFACE_VIDEO, enabled)
+            .apply()
+    }
+
+    /** SWI165: send CarPlay turn-by-turn to the instrument cluster's navigation slot. */
+    fun loadClusterDirections(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_CLUSTER_DIRECTIONS, false)
+
+    fun saveClusterDirections(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_CLUSTER_DIRECTIONS, enabled)
             .apply()
     }
 

@@ -383,6 +383,12 @@ class DiPlayActivity : ComponentActivity() {
             }
         }
         if (com.shilapi.xcertplay.vehicle.VehicleIntegration.isMg4(this)) section(content, getString(R.string.mg4_vehicle), R.drawable.ic_dp_navigation) { card ->
+            if (Mg4FirmwareProfile.detect().generation == Mg4FirmwareProfile.Generation.SWI165) {
+                toggle(card, getString(R.string.mg4_cluster_directions), getString(R.string.mg4_cluster_directions_description),
+                    AirPlayPersistence.loadClusterDirections(this)) {
+                    AirPlayPersistence.saveClusterDirections(this, it)
+                }
+            }
             toggle(card, getString(R.string.car_battery_for_the_iphone),
                 getString(R.string.mg4_battery_for_the_iphone_description),
                 BydOutputSettings.batteryToIphone(this)) {

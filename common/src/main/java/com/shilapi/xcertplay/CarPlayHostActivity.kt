@@ -3275,6 +3275,8 @@ class CarPlayHostActivity : ComponentActivity() {
                 sessionAudioMode == com.shilapi.xcertplay.media.AudioMode.CARPLAY_WIFI
             } &&
                 AirPlayPersistence.loadCallsOverCarPlayOnly(this),
+            clusterDirections = Mg4FirmwareProfile.detect().generation == Mg4FirmwareProfile.Generation.SWI165 &&
+                AirPlayPersistence.loadClusterDirections(this),
         )
         controller = next
         armStartupWatchdog()

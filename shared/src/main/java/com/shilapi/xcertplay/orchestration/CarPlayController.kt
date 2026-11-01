@@ -158,6 +158,8 @@ class CarPlayController(
      * Bluetooth route for calls and keeps them on CarPlay. Reconnected when CarPlay closes.
      */
     private val releaseHandsFree: Boolean = false,
+    /** MG4 SWI165: send CarPlay turn-by-turn to the instrument cluster's navigation slot. */
+    private val clusterDirections: Boolean = false,
 ) : Closeable {
     @Volatile private var handsFreeReleased = false
 
@@ -267,6 +269,7 @@ class CarPlayController(
         override fun onSessionActive(session: AirPlaySession) {
             if (activeSession !== session) {
                 if (bydOutputsEnabled) BydNavigationOutputs.start(appContext)
+                if (clusterDirections) com.shilapi.xcertplay.vehicle.Mg4ClusterNavigation.start(appContext) { debugLog(it) }
                 // The gear may have changed since /info.
                 if (videoListener != null) session.setVideoPlaybackAllowed(VideoInCar.allowed)
             }
@@ -282,6 +285,7 @@ class CarPlayController(
             if (activeSession === session) {
                 activeSession = null
                 if (bydOutputsEnabled) BydNavigationOutputs.endNow()
+                if (clusterDirections) com.shilapi.xcertplay.vehicle.Mg4ClusterNavigation.stop(appContext)
                 videoListener?.onVideoSessionEnded()
                 synchronized(playbackStatus) { playbackStatus.clear() }?.let { playing -> playbackListener?.invoke(playing) }
             }
@@ -459,6 +463,7 @@ class CarPlayController(
         videoGate?.close()
         restoreBluetoothAfterWirelessCarPlay()
         reconnectHandsFree()
+        if (clusterDirections) com.shilapi.xcertplay.vehicle.Mg4ClusterNavigation.stop(appContext)
         if (bydOutputsEnabled) {
             BydNavigationOutputs.endNow()
             BydNavigationOutputs.clearClusterStreamControl(::applyClusterUi)
@@ -536,6 +541,7 @@ class CarPlayController(
     // HUD (SOME/IP) and cluster (AMap broadcast) keep separate state so one failing cannot stall the other.
     private fun onRouteFrame(frame: com.shilapi.xcertplay.iap2.wire.Iap2Frame) {
         if (bydOutputsEnabled) BydNavigationOutputs.onFrame(frame)
+        if (clusterDirections) com.shilapi.xcertplay.vehicle.Mg4ClusterNavigation.onFrame(frame)
         synchronized(playbackStatus) { playbackStatus.accept(frame) }?.let { playing -> playbackListener?.invoke(playing) }
     }
 

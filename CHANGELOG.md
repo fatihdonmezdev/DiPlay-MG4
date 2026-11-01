@@ -1,3 +1,7 @@
+# MG4CPlay 0.2.9-mg4.80 (SWI165 fork), 2026-11-01
+
+- New **MG4 vehicle > Directions on the dashboard (test)** (SWI165, off by default). Sends CarPlay's next turn, distance, street, remaining distance and time to the instrument cluster's navigation area. Read from the car's own APKs: the cluster takes navigation from `com.saicmotor.adapterservice`, whose exported `MapService` accepts the sat-nav's guidance (`guideStatusChange`, `guideInfosChange`, `roadInfoChange`, `remainingDistanceChange`, `remainingTimesChange`) and relays it to the cluster app and the cluster ECU. CarPlay maneuver types are mapped to the cluster's own turn icons. The stock CarPlay app does not do this on SWI165. Each turn change is logged (`Cluster nav:`).
+
 # MG4CPlay 0.2.9-mg4.79 (SWI165 fork), 2026-11-01
 
 - Log every Android display once per session (id, name, size, density, flags, whether it accepts presentations), to find out whether the SWI165 instrument cluster is an Android display. If it is, CarPlay's own instrument-cluster map could be shown there, as DiPlay already does on BYD.
