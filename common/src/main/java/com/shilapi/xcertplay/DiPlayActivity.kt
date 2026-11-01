@@ -1338,6 +1338,11 @@ class DiPlayActivity : ComponentActivity() {
                             file.useLines { lines -> lines.forEach { line -> DiagnosticRedactor.redact(line)?.let { appendLine(it) } } }
                         }
                     }
+                    // Last, so the logs stay at the top of the file. MG4 only.
+                    if (Mg4FirmwareProfile.detect().isMg4) {
+                        appendLine()
+                        SystemAppCodeExport.appendTo(this, appContext)
+                    }
                 }
                 if (uri != null) { DiagnosticExportStore.write(appContext.contentResolver, uri, report); uri }
                 else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
