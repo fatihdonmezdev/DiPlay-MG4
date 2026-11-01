@@ -75,6 +75,30 @@ class AirPlayInfoPlistTest {
     }
 
     @Test
+    fun opusMicrophoneInputIsOfferedOnlyWithAnEncoder() {
+        val base = AirPlayConfig(
+            deviceName = "test",
+            deviceId = "02:00:00:00:00:02",
+            btMac = "02:00:00:00:00:02",
+            sourceVersion = "366.0",
+            main = AirPlayDisplayConfig(widthPixels = 1280, heightPixels = 720),
+            microphone = true,
+        )
+        val opus = 0x70000000
+
+        fun telephonyInput(info: Map<String, Any?>): Int {
+            val formats = info["audioFormats"] as List<*>
+            val telephony = formats.map { it as Map<*, *> }.first { it["audioType"] == "telephony" }
+            return telephony["audioInputFormats"] as Int
+        }
+
+        assertTrue(telephonyInput(AirPlayInfoPlist.build(base)) and opus != 0)
+        val pcmOnly = telephonyInput(AirPlayInfoPlist.build(base.copy(microphoneOpus = false)))
+        assertEquals(0, pcmOnly and opus)
+        assertTrue(pcmOnly != 0)
+    }
+
+    @Test
     fun drivingSideAndDisplayValuesAreAdvertised() {
         val info = AirPlayInfoPlist.build(
             AirPlayConfig(

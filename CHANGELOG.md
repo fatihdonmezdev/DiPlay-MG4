@@ -1,3 +1,8 @@
+# MG4CPlay 0.2.9-mg4.67 (SWI165 fork), 2026-11-01
+
+- Fix the call microphone on Android 9. DiPlay offered Opus for microphone input, so the iPhone chose it for calls, but Android 9 has no Opus encoder and the microphone never started (`Microphone telephony: failed`, codec OPUS, in mg4.66). Opus input is now offered only when the head unit has an Opus encoder; otherwise the iPhone sends plain PCM.
+- Confirmed on the car in mg4.66: Wi-Fi music, and steering-wheel next and previous (wheel key codes 5 next, 4 previous, 3 mute, 1 volume up).
+
 # MG4CPlay 0.2.9-mg4.66 (SWI165 fork), 2026-11-01
 
 - Wi-Fi audio: steering-wheel next and previous now control CarPlay. On SWI165 the wheel keys arrive as a SystemUI broadcast handled by the car's MediaService, not as Android media keys, so DiPlay listens for that broadcast while CarPlay runs. Every wheel key is logged; mute and volume stay with the car.

@@ -89,7 +89,7 @@ The build script automatically verifies the signature. To manually check the out
 
 ```bash
 BUILD_TOOLS="${ANDROID_HOME}/build-tools/35.0.0"
-APK="dist/MG4CPlay-v0.2.9-mg4.66.apk"
+APK="dist/MG4CPlay-v0.2.9-mg4.67.apk"
 
 "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
 ```

@@ -5,7 +5,7 @@ Wireless CarPlay for the MG4 head unit. This is a personal fork of
 for an Australian **MG4 on SWI165 firmware** (`SWI165-29176-1100R11`, Android 9,
 AUTUS SAIC MT2712, 1920x720 panel). Upstream is tested on SWI69.
 
-Current build: **0.2.9-mg4.66**. Car-test builds install as
+Current build: **0.2.9-mg4.67**. Car-test builds install as
 `com.shihab.diplay.hudtest`, alongside any upstream `com.shihab.diplay` install.
 Run one at a time.
 
@@ -16,9 +16,9 @@ Run one at a time.
 | Wireless CarPlay over the car hotspot | Working, about 4 s from launch to first frame |
 | Picture (overlay video renderer) | Working, fixes the washed-out look |
 | Battery and range sent to the iPhone | Working (Apple Maps EV features) |
-| Music over Wi-Fi (CarPlay audio) | Working in mg4.65; default on SWI165 from mg4.66 |
-| Phone calls over Wi-Fi | Fix in mg4.66, awaiting a car test |
-| Steering-wheel next and previous | Fix in mg4.66, awaiting a car test |
+| Music over Wi-Fi (CarPlay audio) | Working; default on SWI165 from mg4.66 |
+| Phone calls over Wi-Fi | mg4.66: microphone failed (iPhone chose Opus, which Android 9 cannot encode). Fixed in mg4.67, awaiting a car test |
+| Steering-wheel next and previous | Working (mg4.66) |
 | Siri and Maps voice prompts | Not yet tested |
 | Bluetooth Music mode (fallback) | Fix in mg4.66, awaiting a car test |
 
