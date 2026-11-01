@@ -1,3 +1,7 @@
+# MG4CPlay 0.2.9-mg4.79 (SWI165 fork), 2026-11-01
+
+- Log every Android display once per session (id, name, size, density, flags, whether it accepts presentations), to find out whether the SWI165 instrument cluster is an Android display. If it is, CarPlay's own instrument-cluster map could be shown there, as DiPlay already does on BYD.
+
 # MG4CPlay 0.2.9-mg4.78 (SWI165 fork), 2026-11-01
 
 - Steering-wheel keys, from the car's SystemUI (`PhysicalKeysBroadcastReceiver`): SystemUI receives raw key codes (297 volume up, 298 volume down, 299 previous, 300 next, 301 mute, 291 phone, 286 and 17 the custom keys, 288 HVAC, 3 home) and reformats the wheel rocker to KEY_CODE 1 to 5 in the wheel's default mode (6 to 10 and 11 to 15 in its other modes). DiPlay now also logs every raw key (`Wheel raw key:`), so the voice button's code can be identified.

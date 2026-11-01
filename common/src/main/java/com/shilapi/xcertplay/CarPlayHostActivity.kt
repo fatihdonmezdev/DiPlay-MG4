@@ -3331,6 +3331,27 @@ class CarPlayHostActivity : ComponentActivity() {
         mainHandler.postDelayed(applyDisplaySize, DISPLAY_CHANGE_DEBOUNCE_MILLIS)
     }
 
+    /**
+     * Every display Android knows about, once per session. The SWI165 cluster app renders onto
+     * the instrument cluster ("startClusterActivity"); if the cluster is an Android display here,
+     * CarPlay's own instrument-cluster map (altScreen) could be shown on it.
+     */
+    private fun logAllDisplays() {
+        runCatching {
+            val manager = getSystemService(android.hardware.display.DisplayManager::class.java) ?: return
+            val presentation = manager.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
+                .map { it.displayId }.toSet()
+            manager.displays.forEach { display ->
+                val metrics = android.util.DisplayMetrics().also { display.getRealMetrics(it) }
+                appendLog(
+                    "Display id=${display.displayId} name=\"${display.name}\" size=${metrics.widthPixels}x${metrics.heightPixels} " +
+                        "dpi=${metrics.densityDpi} flags=0x${Integer.toHexString(display.flags)} " +
+                        "state=${display.state} presentation=${display.displayId in presentation}",
+                )
+            }
+        }.onFailure { appendLog("Display list failed: ${it.javaClass.simpleName}") }
+    }
+
     private fun applyDisplaySize(size: DisplaySize) {
         if (shuttingDown.get() || size == activeDisplaySize) return
         val previous = activeDisplaySize
@@ -3339,6 +3360,7 @@ class CarPlayHostActivity : ComponentActivity() {
         updateResolutionMenu()
         if (previous == null) {
             appendLog("Display detected: ${size.width}x${size.height}")
+            logAllDisplays()
             maybeStartCarPlay()
         } else if (menuOpen || handshakeResetInProgress) {
             appendLog(
