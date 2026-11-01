@@ -3259,7 +3259,15 @@ class CarPlayHostActivity : ComponentActivity() {
                 null
             },
             audioMode = sessionAudioMode,
-            releaseHandsFree = sessionAudioMode == com.shilapi.xcertplay.media.AudioMode.CARPLAY_WIFI &&
+            releaseHandsFree = run {
+                com.shilapi.xcertplay.media.MicrophoneSource.override =
+                    when (AirPlayPersistence.loadMicrophoneSource(this)) {
+                        1 -> android.media.MediaRecorder.AudioSource.VOICE_COMMUNICATION
+                        2 -> android.media.MediaRecorder.AudioSource.MIC
+                        else -> null
+                    }
+                sessionAudioMode == com.shilapi.xcertplay.media.AudioMode.CARPLAY_WIFI
+            } &&
                 AirPlayPersistence.loadCallsOverCarPlayOnly(this),
         )
         controller = next

@@ -170,6 +170,17 @@ class CarPlayMediaEngine(
                 }
             },
         )
+        // Resend requests go to the iPhone's control port. Until it sends us a control packet we
+        // don't know it, so take it from SETUP when given (mg4.71: every resend was skipped).
+        val senderControlPort = (stream["controlPort"] as? Number)?.toInt()
+        val remote = session.remoteAddress
+        if (senderControlPort != null && senderControlPort in 1..65535 && remote != null) {
+            audio.setControlPeer(java.net.InetSocketAddress(remote, senderControlPort))
+        }
+        session.logDebug(
+            "airplay audio stream request type=$type keys=${stream.keys.sorted()} " +
+                "senderControlPort=${senderControlPort ?: "none"}",
+        )
         streams[streamKey] = audio
         audioMeta[streamKey] = meta
         return linkedMapOf(

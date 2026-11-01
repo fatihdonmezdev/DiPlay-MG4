@@ -91,6 +91,11 @@ class AudioStream(
         return data.localPort to control.localPort
     }
 
+    /** The iPhone's RTCP control address, when SETUP names it; replaced by any packet it sends. */
+    fun setControlPeer(peer: SocketAddress) {
+        if (controlPeer == null) controlPeer = peer
+    }
+
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
         dataSocket?.close()

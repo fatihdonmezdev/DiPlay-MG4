@@ -1,3 +1,9 @@
+# MG4CPlay 0.2.9-mg4.74 (SWI165 fork), 2026-11-01
+
+- Ask the iPhone to resend lost audio packets. The mg4.71 counters showed every resend request was skipped because DiPlay didn't know the iPhone's control port; it now takes it from the audio stream's SETUP when given. The log records the request keys and the port.
+- New **Audio routing > Microphone (test)** choice: Automatic (default: call processing for calls, voice recognition for Siri), call processing for calls and Siri, or the plain microphone. For comparing how well Siri and callers hear you; the microphone line in the log shows the source used.
+- mg4.71 car test (14:01 to 14:16): music, calls and Siri audio arrived almost clean (call and Siri streams lost nothing; music lost a few short bursts). The car's UDP and hotspot counters stayed at zero, so the loss that remains is between the iPhone and the car.
+
 # MG4CPlay 0.2.9-mg4.73 (SWI165 fork), 2026-11-01
 
 - Microphone diagnostics: every 5 s while the microphone runs (calls and Siri), the log records frames sent, audio time against real time, Opus encode time (average and worst), the longest wait for the microphone and the bitrate. If encoding can't keep up on the head unit, the delay grows over a call, and this line shows it.

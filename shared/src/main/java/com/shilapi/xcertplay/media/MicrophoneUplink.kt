@@ -22,6 +22,15 @@ import java.util.concurrent.atomic.AtomicBoolean
  * The recorder runs only while the matching audio stream is active, so callers start this after
  * the first downlink audio packet and close it on stream teardown.
  */
+/**
+ * Test override for which car microphone path calls and Siri use (an Android AudioSource), or null
+ * for the default per stream (call processing for calls, voice recognition for Siri). Set by the
+ * host from settings before CarPlay starts.
+ */
+object MicrophoneSource {
+    @Volatile var override: Int? = null
+}
+
 internal class MicrophoneUplink(
     private val config: MicrophoneConfig,
     private val report: (String) -> Unit = {},
@@ -59,7 +68,7 @@ internal class MicrophoneUplink(
             return false
         }
 
-        val source = when (config.audioType) {
+        val source = MicrophoneSource.override ?: when (config.audioType) {
             "telephony" -> MediaRecorder.AudioSource.VOICE_COMMUNICATION
             "speechrecognition" -> MediaRecorder.AudioSource.VOICE_RECOGNITION
             else -> MediaRecorder.AudioSource.MIC
@@ -326,9 +335,9 @@ internal class MicrophoneUplink(
     }
 
     private companion object {
-        const val TAG = "xcertplay-usb"
-        const val MIN_READ_BYTES = 2_048
-        const val CLOSE_JOIN_MILLIS = 500L
-        const val STATS_WINDOW_NS = 5_000_000_000L
+        private const val TAG = "xcertplay-usb"
+        private const val MIN_READ_BYTES = 2_048
+        private const val CLOSE_JOIN_MILLIS = 500L
+        private const val STATS_WINDOW_NS = 5_000_000_000L
     }
 }

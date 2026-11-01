@@ -342,6 +342,13 @@ class DiPlayActivity : ComponentActivity() {
                 AirPlayPersistence.loadCallsOverCarPlayOnly(this)) {
                 AirPlayPersistence.saveCallsOverCarPlayOnly(this, it)
             }
+            choice(card, getString(R.string.microphone_source), listOf(
+                getString(R.string.microphone_source_automatic),
+                getString(R.string.microphone_source_voice),
+                getString(R.string.microphone_source_plain),
+            ), AirPlayPersistence.loadMicrophoneSource(this)) {
+                AirPlayPersistence.saveMicrophoneSource(this, it)
+            }
             if (!mg4) toggle(card, getString(R.string.contrib_audio_home_toggle_audio_focus), getString(R.string.contrib_audio_home_toggle_audio_focus_desc), AirPlayPersistence.loadAudioFocusEnabled(this)) { AirPlayPersistence.saveAudioFocusEnabled(this, it) }
             if (!mg4 && resources.getBoolean(R.bool.config_advanced_audio_channel_mapping)) {
                 toggle(card, getString(R.string.advanced_audio_channel_mapping),
