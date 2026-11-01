@@ -138,6 +138,8 @@ class AndroidMediaSink(
     private val videoWidth: Int = 1280,
     private val videoHeight: Int = 720,
     private val preferSoftwareHevcDecoder: Boolean = false,
+    /** 0 lets the decoder read the stream's colour range; otherwise a MediaFormat.COLOR_RANGE_* hint. */
+    private val videoColorRange: Int = 0,
     private val advancedAudioChannelMapping: Boolean = false,
     private val audioFocusEnabled: Boolean = false,
     private val audioMode: AudioMode = AudioMode.HYBRID_BLUETOOTH,
@@ -315,6 +317,7 @@ class AndroidMediaSink(
                 videoWidth,
                 videoHeight,
                 preferSoftwareHevcDecoder,
+                videoColorRange,
                 requestKeyFrame = { requestVideoRecovery(type) },
                 report = { videoDiagnosticHandlers[type]?.invoke(it) },
             )
@@ -353,6 +356,7 @@ private class VideoDecoder(
     private val width: Int,
     private val height: Int,
     private val preferSoftwareHevcDecoder: Boolean,
+    private val videoColorRange: Int,
     private val requestKeyFrame: () -> Unit,
     private val report: (String) -> Unit,
 ) : Closeable {
@@ -473,7 +477,13 @@ private class VideoDecoder(
         renderedFrameLogged = false
         submittedFrameLogged = false
         if (next != null) {
-            report("decoder=${next.name} mime=$mime size=${width}x$height")
+            report("decoder=${next.name} mime=$mime size=${width}x$height colourRangeHint=${
+                when (videoColorRange) {
+                    MediaFormat.COLOR_RANGE_FULL -> "full"
+                    MediaFormat.COLOR_RANGE_LIMITED -> "limited"
+                    else -> "stream"
+                }
+            }")
             Log.i(
                 TAG,
                 "video decoder configured name=${next.name} mime=$mime size=${width}x$height",
@@ -490,6 +500,13 @@ private class VideoDecoder(
                 setInteger(MediaFormat.KEY_PRIORITY, 0)
             }
             csd.forEachIndexed { index, bytes -> setByteBuffer("csd-$index", ByteBuffer.wrap(bytes)) }
+            // Test for washed-out whites on SWI165: tell the decoder (and the display plane it
+            // tags) which colour range the picture uses instead of leaving it to the stream.
+            if (videoColorRange != 0) {
+                setInteger(MediaFormat.KEY_COLOR_RANGE, videoColorRange)
+                setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
+                setInteger(MediaFormat.KEY_COLOR_TRANSFER, MediaFormat.COLOR_TRANSFER_SDR_VIDEO)
+            }
         }
 
     private fun tryConfigure(

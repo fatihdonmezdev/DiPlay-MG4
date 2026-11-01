@@ -1,3 +1,7 @@
+# MG4CPlay 0.2.9-mg4.77 (SWI165 fork), 2026-11-01
+
+- New **Display and performance > Colour range (test)**: from the video (default), limited (video range) or full (PC range). Whites still look washed out next to USB CarPlay with both HEVC and H.264, so the codec isn't the cause. The likeliest remaining cause is the colour range the car's video plane assumes: limited-range video shown as full range gives grey blacks and dim whites. The choice is passed to the decoder with BT.709 and SDR transfer, and logged on the decoder line (`colourRangeHint=`) next to the decoder's own output colour.
+
 # MG4CPlay 0.2.9-mg4.76 (SWI165 fork), 2026-11-01
 
 - **Efficient video (HEVC)** is back in Display and performance on MG4, still on by default. Whites still look slightly washed out next to USB CarPlay, and the stock AllGo app (read from its APK) decodes H.264 with a plain decoder format, while DiPlay uses HEVC. Turning the switch off sends H.264 like the stock app, to compare. The log's video output line records the colour standard, range and transfer for each.

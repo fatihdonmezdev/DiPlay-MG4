@@ -328,6 +328,13 @@ class DiPlayActivity : ComponentActivity() {
                 AirPlayPersistence.loadSurfaceVideoRenderer(this) ?: Mg4FirmwareProfile.detect().preferSurfaceVideo) {
                 AirPlayPersistence.saveSurfaceVideoRenderer(this, it)
             }
+            choice(card, getString(R.string.video_colour_range), listOf(
+                getString(R.string.video_colour_range_stream),
+                getString(R.string.video_colour_range_limited),
+                getString(R.string.video_colour_range_full),
+            ), AirPlayPersistence.loadVideoColourRange(this)) {
+                AirPlayPersistence.saveVideoColourRange(this, it)
+            }
             toggle(card, getString(R.string.plain_display_area), getString(R.string.plain_display_area_description),
                 AirPlayPersistence.loadPlainDisplayArea(this) ?: Mg4FirmwareProfile.detect().squareCorners) {
                 AirPlayPersistence.savePlainDisplayArea(this, it)

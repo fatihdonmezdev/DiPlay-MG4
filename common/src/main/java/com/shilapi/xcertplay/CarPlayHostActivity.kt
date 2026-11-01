@@ -3027,6 +3027,11 @@ class CarPlayHostActivity : ComponentActivity() {
             videoWidth = videoWidth,
             videoHeight = videoHeight,
             preferSoftwareHevcDecoder = hevcSoftwareDecoderEnabled,
+            videoColorRange = when (AirPlayPersistence.loadVideoColourRange(this)) {
+                1 -> android.media.MediaFormat.COLOR_RANGE_LIMITED
+                2 -> android.media.MediaFormat.COLOR_RANGE_FULL
+                else -> 0
+            },
             advancedAudioChannelMapping = advancedAudioChannelMapping,
             // MG4: Wi-Fi audio takes focus itself; Bluetooth Music must leave it to the car.
             audioFocusEnabled = !Mg4FirmwareProfile.detect().isMg4 && AirPlayPersistence.loadAudioFocusEnabled(this),

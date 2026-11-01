@@ -43,6 +43,7 @@ object AirPlayPersistence {
     private const val KEY_PLAIN_DISPLAY = "plain_display_area"
     private const val KEY_CALLS_CARPLAY_ONLY = "calls_over_carplay_only"
     private const val KEY_MIC_SOURCE = "microphone_source"
+    private const val KEY_VIDEO_COLOUR_RANGE = "video_colour_range"
     private const val KEY_AUDIO_MODE = "audio_mode"
     private const val KEY_ADVANCED_AUDIO_CHANNEL_MAPPING = "advanced_audio_channel_mapping"
     private const val KEY_AUDIO_FOCUS_ENABLED = "audio_focus_enabled"
@@ -147,6 +148,16 @@ object AirPlayPersistence {
     fun saveSurfaceVideoRenderer(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_SURFACE_VIDEO, enabled)
+            .apply()
+    }
+
+    /** 0 from the stream, 1 limited (video) range, 2 full range. */
+    fun loadVideoColourRange(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_VIDEO_COLOUR_RANGE, 0).takeIf { it in 0..2 } ?: 0
+
+    fun saveVideoColourRange(context: Context, choice: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_VIDEO_COLOUR_RANGE, choice)
             .apply()
     }
 
