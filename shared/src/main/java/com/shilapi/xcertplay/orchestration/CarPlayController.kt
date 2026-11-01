@@ -428,6 +428,18 @@ class CarPlayController(
         }
     }
 
+    /** Sends one CarPlay telephony press (an [com.shilapi.xcertplay.airplay.AirPlayHid] telephony index). */
+    fun sendTelephonyButton(index: Int): Boolean {
+        if (closed) return false
+        val session = activeSession ?: return false
+        return try {
+            touchExecutor.execute { session.sendTelephony(index) }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun sendMediaButton(index: Int): Boolean {
         if (closed) return false
         val session = activeSession ?: return false

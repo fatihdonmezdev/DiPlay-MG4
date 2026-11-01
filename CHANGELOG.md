@@ -1,3 +1,8 @@
+# MG4CPlay 0.2.9-mg4.78 (SWI165 fork), 2026-11-01
+
+- Steering-wheel keys, from the car's SystemUI (`PhysicalKeysBroadcastReceiver`): SystemUI receives raw key codes (297 volume up, 298 volume down, 299 previous, 300 next, 301 mute, 291 phone, 286 and 17 the custom keys, 288 HVAC, 3 home) and reformats the wheel rocker to KEY_CODE 1 to 5 in the wheel's default mode (6 to 10 and 11 to 15 in its other modes). DiPlay now also logs every raw key (`Wheel raw key:`), so the voice button's code can be identified.
+- With **Calls over CarPlay only** on, a short press of the steering-wheel phone key answers or ends the CarPlay call (CarPlay telephony hook switch).
+
 # MG4CPlay 0.2.9-mg4.77 (SWI165 fork), 2026-11-01
 
 - New **Display and performance > Colour range (test)**: from the video (default), limited (video range) or full (PC range). Whites still look washed out next to USB CarPlay with both HEVC and H.264, so the codec isn't the cause. The likeliest remaining cause is the colour range the car's video plane assumes: limited-range video shown as full range gives grey blacks and dim whites. The choice is passed to the decoder with BT.709 and SDR transfer, and logged on the decoder line (`colourRangeHint=`) next to the decoder's own output colour.
