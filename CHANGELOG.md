@@ -1,5 +1,7 @@
 # MG4CPlay 0.2.9-mg4.66 (SWI165 fork), 2026-11-01
 
+- Wi-Fi audio is now the default on SWI165 (other firmware keeps Bluetooth music). The switch under Audio routing is no longer marked experimental and still turns it off.
+- In Wi-Fi audio mode, disconnect the car’s Bluetooth music (A2DP and AVRCP) from the iPhone once CarPlay is up, as factory wireless CarPlay does when the phone asks. Hands-free stays connected and pairing is untouched. This replaces an unused upstream release that switched the whole Bluetooth radio off.
 - Wi-Fi audio: fix silent phone calls. With audio over Wi-Fi the iPhone sends calls to CarPlay, and the car did not play call audio from DiPlay. On Android 9 call audio now uses the music stream (which reaches the speakers), and the microphone falls back to the plain mic if the car refuses the call-processing source. The log records the microphone source and call audio route.
 - Fix the Bluetooth Music switch on SWI165. Read from the car's own MediaService: its Bluetooth interface has no `requestBtAudioFocus` (DiPlay was sending command 15, which does not exist), and `play` (2) is what switches the car to Bluetooth Music. DiPlay now sends only `play` and logs its result, plus the Bluetooth connection and play state.
 

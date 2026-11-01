@@ -23,7 +23,7 @@ internal data class Mg4FirmwareProfile(
      * stock AllGo CarPlay app) instead of a TextureView (GPU composited) by default.
      */
     val preferSurfaceVideo: Boolean,
-    /** How music reaches the speakers when the user has not chosen; hybrid until Wi-Fi audio is proven. */
+    /** How music reaches the speakers when the user has not chosen: Wi-Fi on SWI165, hybrid Bluetooth elsewhere. */
     val defaultAudioMode: AudioMode,
 ) {
     enum class Generation { SWI69, SWI165, OTHER }
@@ -56,7 +56,9 @@ internal data class Mg4FirmwareProfile(
                     // The stock AllgoCarplay_EH32 app decodes into a SurfaceView. The TextureView
                     // path looks washed out next to it on this unit.
                     preferSurfaceVideo = true,
-                    defaultAudioMode = AudioMode.HYBRID_BLUETOOTH,
+                    // Wi-Fi audio played music on this car (mg4.65, 2026-11-01); hybrid Bluetooth
+                    // needs the car to switch source and was the less reliable path here.
+                    defaultAudioMode = AudioMode.CARPLAY_WIFI,
                 )
                 value.startsWith("SWI69") -> Mg4FirmwareProfile(
                     generation = Generation.SWI69,

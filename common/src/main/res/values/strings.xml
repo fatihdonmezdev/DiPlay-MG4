@@ -216,8 +216,8 @@
     <string name="hevc_software_decoder">HEVC software decoder</string>
     <string name="overlay_video_renderer">Overlay video renderer</string>
     <string name="overlay_video_renderer_description">Draws CarPlay on the display’s video overlay, like the car’s own CarPlay app. Turn off if the picture flickers or stays black. Applies next time CarPlay opens.</string>
-    <string name="carplay_wifi_audio">CarPlay audio over Wi-Fi (experimental)</string>
-    <string name="carplay_wifi_audio_description">Plays music through DiPlay instead of the car’s Bluetooth. Off uses the car’s Bluetooth Music, which is the tested path. Applies when CarPlay reconnects.</string>
+    <string name="carplay_wifi_audio">CarPlay audio over Wi-Fi</string>
+    <string name="carplay_wifi_audio_description">Plays music and calls through DiPlay over Wi-Fi, and disconnects the car’s Bluetooth music from your iPhone while CarPlay runs. Hands-free calling stays connected. Off uses the car’s Bluetooth Music instead. Applies when CarPlay reconnects.</string>
     <string name="hide_bottom_bar">Hide bottom bar</string>
     <string name="hide_keyboard">Hide keyboard</string>
     <string name="hide_the_car_s_system_bars_while_carplay_is_open">Hide the car’s system bars while CarPlay is open.</string>

@@ -41,8 +41,9 @@ class Mg4FirmwareProfileTest {
     }
 
     @Test
-    fun everyFirmwareDefaultsToHybridBluetoothAudio() {
-        for (firmware in listOf("SWI69-12345-1000R01", "SWI165-29176-1100R11", null, "BYD-DiLink")) {
+    fun swi165DefaultsToWifiAudioAndOthersToHybridBluetooth() {
+        assertEquals(AudioMode.CARPLAY_WIFI, Mg4FirmwareProfile.forFirmware("SWI165-29176-1100R11").defaultAudioMode)
+        for (firmware in listOf("SWI69-12345-1000R01", null, "BYD-DiLink")) {
             assertEquals(AudioMode.HYBRID_BLUETOOTH, Mg4FirmwareProfile.forFirmware(firmware).defaultAudioMode)
         }
     }
