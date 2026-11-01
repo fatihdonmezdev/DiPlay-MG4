@@ -1,3 +1,10 @@
+# MG4CPlay 0.2.9-mg4.85 (SWI165 fork), 2026-11-01
+
+- **Wi-Fi Direct on Android 9 (test).** Wi-Fi Direct was hidden on Android 9 because the upstream code needs Android 10 calls to set the group's name, passphrase and channel. MG4CPlay runs as the system user on the MG4, so a separate Android 9 path now uses the older `createGroup` (system-made `DIRECT-xx` name and passphrase, sent to the iPhone over Bluetooth as usual) and the hidden `setWifiP2pChannels` call to steer the channel. Choose **Wi-Fi Direct** in the wireless link settings, with the car's Wi-Fi switch on and the car hotspot off.
+- New **Wi-Fi Direct band** choice on Android 9: **Automatic (5 GHz first)** tries channels 36 and 149, then 6, 1 and 11, then the system's own choice; **2.4 GHz only** skips 5 GHz. Each channel gets up to 7 s before the next is tried. The channel is read back from the driver and never assumed.
+- On disconnect the group is removed, the persistent group Android 9 saves is deleted, and the channel restriction is cleared so the stock apps are unaffected.
+- The log shows `Wi-Fi P2P legacy plan channels=`, `setChannels operating= ... code=`, `create accepted` or `create rejected code=`, and `Wi-Fi P2P ready mode=LEGACY band= channel= frequencyMHz=`.
+
 # MG4CPlay 0.2.9-mg4.84 (SWI165 fork), 2026-11-01
 
 - **Hide lost call packets.** mg4.83 car test: calls work over the car's phone path (`call track car source=53`, `mode set=2`, then `mode set=0` at hang-up), but the call had some static. The log shows no loss for 40 s, then 30-60% of call packets missing for the last 25 s (gaps up to 2 s, and the whole Wi-Fi link slowed at the same time). The call stream gives no control port, so nothing can be resent, and the platform decoder skipped the gaps. Wi-Fi calls now decode in software (Concentus): a gap of up to 10 frames (200 ms) is filled from the next packet's in-band FEC where the iPhone includes it, and otherwise with Opus packet-loss concealment. The software decoder warms up with the encoder at connect. The log shows `call decoder=software, hides lost packets` and, at hang-up, `call loss packets= fec= concealed= unfilledGaps=`.

@@ -72,7 +72,7 @@
     <string name="resolution_handshake_prefix">握手分辨率：</string>
     <string name="safe_area_full_screen_at">安全区域：全屏，</string>
     <string name="safe_area_prefix">安全区域：</string>
-    <string name="settings_android9_compat">以下设置在 Android 9（API 28）上不可用且已隐藏：\n• Wi-Fi P2P（5 GHz）— 将改用 LocalOnlyHotspot。\n• HEVC 软解码器 — 将改用硬件解码。</string>
+    <string name="settings_android9_compat">以下设置在 Android 9（API 28）上不可用且已隐藏：\n• HEVC 软解码器 — 将改用硬件解码。</string>
     <string name="settings_mfi_address_hint">地址必须以 http:// 或 https:// 开头。令牌为可选项，将作为 Authorization bearer token 发送。</string>
     <string name="a_familiar_drive">熟悉的驾乘体验。</string>
     <string name="a_previous_wi_fi_direct_connection_is_still_running_reset">之前的 Wi-Fi Direct 连接仍在运行。请重置后再连接。</string>

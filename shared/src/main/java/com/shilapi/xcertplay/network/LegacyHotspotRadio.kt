@@ -5,8 +5,7 @@ internal object LegacyHotspotRadio {
     data class Reading(val frequencyMHz: Int?, val error: String?)
 
     fun read(interfaceName: String, band: String?): Reading {
-        if (!interfaceName.matches(Regex("(?:ap|wlan|swlan|softap)[0-9]+")))
-            return Reading(null, "invalid AP interface")
+        if (!isReadableInterface(interfaceName)) return Reading(null, "invalid AP interface")
         val raw = try { LegacyHotspotNative.query(interfaceName) }
         catch (_: LinkageError) { return Reading(null, "driver reader unavailable") }
         if (raw.size != 3) return Reading(null, "invalid driver response")
@@ -14,6 +13,10 @@ internal object LegacyHotspotRadio {
         val frequency = decodeFrequency(raw[1], raw[2], band)
         return Reading(frequency, if (frequency == null) "unrecognized driver frequency" else null)
     }
+
+    /** Soft AP names, plus Wi-Fi Direct group interfaces such as p2p0 and p2p-wlan0-0. */
+    fun isReadableInterface(name: String): Boolean =
+        name.matches(Regex("(?:ap|wlan|swlan|softap|p2p)[0-9]+|p2p-[a-z]+[0-9]+-[0-9]+"))
 
     // iw_freq uses mantissa * 10^exponent Hz; some drivers return a channel number instead.
     // A channel alone is ambiguous, so require the reservation's explicit band in that case.

@@ -53,6 +53,7 @@ object AirPlayPersistence {
     private const val KEY_NAVIGATION_STREAM_TYPE = "navigation_stream_type"
     private const val KEY_WIRELESS_ENABLED = "wireless_enabled"
     private const val KEY_WIRELESS_HOTSPOT_MODE = "wireless_hotspot_mode"
+    private const val KEY_WIFI_DIRECT_BAND = "wifi_direct_band"
     private const val KEY_MANUAL_HOTSPOT_SSID = "manual_hotspot_ssid"
     private const val KEY_MANUAL_HOTSPOT_PASSPHRASE = "manual_hotspot_passphrase"
     private const val KEY_MANUAL_HOTSPOT_BAND = "manual_hotspot_band"
@@ -343,11 +344,23 @@ object AirPlayPersistence {
         val stored = prefs.getString(KEY_WIRELESS_HOTSPOT_MODE, null)
         val mode = WirelessHotspotMode.entries.firstOrNull { it.name == stored }
             ?: WirelessHotspotMode.MANUAL
-        val supported = if (mode == WirelessHotspotMode.LOCAL_ONLY_HOTSPOT ||
-            (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && mode == WirelessHotspotMode.WIFI_P2P)
-        ) WirelessHotspotMode.MANUAL else mode
+        // Android 9 has its own Wi-Fi Direct path (LegacyWifiP2pGroupManager), so only
+        // LocalOnlyHotspot is retired here.
+        val supported = if (mode == WirelessHotspotMode.LOCAL_ONLY_HOTSPOT) WirelessHotspotMode.MANUAL else mode
         if (stored != supported.name) saveWirelessHotspotMode(context, supported)
         return supported
+    }
+
+    fun loadWifiDirectBand(context: Context): ManualHotspotBand {
+        val stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_WIFI_DIRECT_BAND, null)
+        return ManualHotspotBand.entries.firstOrNull { it.name == stored } ?: ManualHotspotBand.AUTO
+    }
+
+    fun saveWifiDirectBand(context: Context, band: ManualHotspotBand) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_WIFI_DIRECT_BAND, band.name)
+            .apply()
     }
 
     fun saveWirelessHotspotMode(context: Context, mode: WirelessHotspotMode) {

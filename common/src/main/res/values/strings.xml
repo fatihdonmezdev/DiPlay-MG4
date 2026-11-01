@@ -1,6 +1,10 @@
 <resources>
     <string name="built_in_car_hotspot">Built-in car hotspot</string>
     <string name="wifi_direct">Wi-Fi Direct</string>
+    <string name="wifi_direct_band">Wi-Fi Direct band</string>
+    <string name="wifi_direct_band_auto">Automatic (5 GHz first)</string>
+    <string name="wifi_direct_band_2_4">2.4 GHz only</string>
+    <string name="wifi_direct_band_desc">Automatic tries 5 GHz and falls back to 2.4 GHz if the car refuses it. Choose 2.4 GHz only if the iPhone cannot join on 5 GHz.</string>
     <string name="hotspot_hint_manual">Built-in car hotspot · Keep the car hotspot, Bluetooth and your iPhone’s Wi-Fi on.</string>
     <string name="hotspot_hint_local">Open Connection setup to save your built-in car hotspot details.</string>
     <string name="hotspot_hint_p2p">Wi-Fi Direct · Keep the car’s Wi-Fi switch, Bluetooth and your iPhone’s Wi-Fi on.</string>
@@ -75,7 +79,7 @@
     <string name="resolution_handshake_prefix">Handshake resolution:\u0020</string>
     <string name="safe_area_full_screen_at">Safe area: full screen at\u0020</string>
     <string name="safe_area_prefix">Safe area:\u0020</string>
-    <string name="settings_android9_compat">The following settings are unavailable and hidden on Android 9 (API 28):\n• Wi-Fi P2P (5 GHz) — LocalOnlyHotspot is used instead.\n• HEVC software decoder — hardware decoding is used instead.</string>
+    <string name="settings_android9_compat">The following settings are unavailable and hidden on Android 9 (API 28):\n• HEVC software decoder — hardware decoding is used instead.</string>
     <string name="settings_mfi_address_hint">Address must start with http:// or https://. Token is optional and sent as an Authorization bearer token.</string>
     <string name="app_name">MG4CPlay</string>
     <string name="language_section_title">Language</string>
