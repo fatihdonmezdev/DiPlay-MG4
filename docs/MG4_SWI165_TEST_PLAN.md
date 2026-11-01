@@ -1,6 +1,6 @@
 # SWI165 release test plan: calls, music, Bluetooth and Wi-Fi
 
-For checking a build on the car before it's called a release. Written for mg4.83.
+For checking a build on the car before it's called a release. Written for mg4.84.
 
 ## Before you start
 
@@ -81,7 +81,7 @@ end, wait a few seconds, then copy it off.
 | R1 | Ringtone and Maps prompts may be silent | They use the navigation channel, which plays as `USAGE_*` audio, not the music stream. Calls were silent on this firmware until they were moved to the music stream | C3 and D3. If silent, route `alert` and `default` to the music stream in Wi-Fi mode, as calls already are |
 | R2 | Hands-free given back on every DiPlay close | Leaving CarPlay closes the session (`Activity destroyed`) and reconnects hands-free, then the next session releases it again | E1. If it flaps, keep the session alive in the background instead |
 | R3 | No call audio if Wi-Fi drops mid-call | Hands-free is released, so the iPhone has nowhere to send the call except its own earpiece | F3. The iPhone should fall back to its earpiece; confirm |
-| R4 | Call and Siri streams can't ask for resends | The iPhone doesn't send a control port for these streams | F1 during a call; consider `supportsRTPPacketRedundancy` (in the iPhone's call SETUP) |
+| R4 | Call and Siri streams can't ask for resends | The iPhone doesn't send a control port for these streams | mg4.84 hides call gaps up to 200 ms (FEC, then concealment); check `call loss` at hang-up |
 | R5 | Bluetooth music doesn't come back after CarPlay | A2DP is released and not reconnected on close | E1: check whether Bluetooth music needs a manual reconnect |
 | R6 | Siri mishears | Microphone source or processing | D2 results per option |
 

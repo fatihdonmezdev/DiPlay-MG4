@@ -5,7 +5,7 @@ Wireless CarPlay for the MG4 head unit. This is a personal fork of
 for an Australian **MG4 on SWI165 firmware** (`SWI165-29176-1100R11`, Android 9,
 AUTUS SAIC MT2712, 1920x720 panel). Upstream is tested on SWI69.
 
-Current build: **0.2.9-mg4.83**. Car-test builds install as
+Current build: **0.2.9-mg4.84**. Car-test builds install as
 `com.shihab.diplay.hudtest`, alongside any upstream `com.shihab.diplay` install.
 Run one at a time.
 
@@ -16,10 +16,14 @@ Run one at a time.
 | Wireless CarPlay over the car hotspot | Working, about 4 s from launch to first frame |
 | Picture (overlay video renderer) | Working, fixes the washed-out look |
 | Battery and range sent to the iPhone | Working (Apple Maps EV features) |
-| Music over Wi-Fi (CarPlay audio) | Working in mg4.65 and mg4.66. Broken in mg4.67 and mg4.68 (no CarPlay audio at all); fixed in mg4.69, awaiting a car test |
-| Phone calls over Wi-Fi | Not working yet. mg4.69 adds a software Opus encoder for the microphone and stops the call audio player hanging; awaiting a car test |
-| Steering-wheel next and previous | Working (mg4.66) |
-| Siri and Maps voice prompts | Not yet tested |
+| Music over Wi-Fi (CarPlay audio) | Working. Broken in mg4.67 and mg4.68 (no CarPlay audio at all); fixed in mg4.69 and confirmed in the car in mg4.71 |
+| Phone calls over Wi-Fi | Working in mg4.83: the call played through the car's phone audio path. Some static occurs when Wi-Fi drops call packets (30–60% loss in one car test); the cause is the Wi-Fi link, not the routing |
+| Call microphone | Working. Software Opus encoder on Android 9 (mg4.69), about 5 ms per frame (mg4.83) |
+| Steering-wheel next and previous | Working (mg4.66, re-confirmed mg4.80) |
+| Hands-free released during CarPlay | Working (mg4.80); released again on each reconnect (mg4.81) |
+| Square corners | Confirmed in the car (mg4.70), default since mg4.75 |
+| Siri and Maps voice prompts | Siri audio clean in mg4.71 test; Maps voice prompts not yet tested |
+| Instrument-cluster directions | Test build (mg4.80), not yet confirmed in the car |
 | Bluetooth Music mode (fallback) | Fix in mg4.66, awaiting a car test |
 
 The full test record is in [docs/MG4_SWI165.md](docs/MG4_SWI165.md).
@@ -31,7 +35,9 @@ The full test record is in [docs/MG4_SWI165.md](docs/MG4_SWI165.md).
 | Firmware profile | Reads `ro.build.mt2712.version` at start-up and applies SWI69 or SWI165 settings. Unknown firmware keeps upstream behaviour. |
 | Video | SWI165 draws CarPlay on the hardware video overlay (`SurfaceView`), like the stock AllGo CarPlay app. |
 | Audio | SWI165 plays CarPlay music and calls over Wi-Fi through DiPlay. Once CarPlay is up, the car's Bluetooth music link to the iPhone is disconnected; hands-free stays connected and pairing is kept. Call audio plays like the stock CarPlay app: voice audio tagged as car source 53, with the car in call mode (mg4.83). |
-| Steering wheel | SWI165 sends wheel keys as a SystemUI broadcast, not Android media keys. DiPlay listens for it in Wi-Fi mode and sends next and previous to CarPlay. |
+| Calls over CarPlay only | Optional, on by default on MG4 (mg4.82). Keeps hands-free released for the whole CarPlay session, so calls can only come through CarPlay. A short press of the wheel phone key answers or ends a CarPlay call (mg4.78). |
+| Steering wheel | SWI165 sends wheel keys as a SystemUI broadcast, not Android media keys. DiPlay listens for it in Wi-Fi mode and sends next and previous to CarPlay. Volume and mute stay with the car. |
+| Instrument cluster | Test only (mg4.80): sends CarPlay's next turn, distance and street to the cluster's navigation area through the car's `MapService`. |
 | Bluetooth Music mode | Kept as a fallback. Switches the car to Bluetooth Music with the media service's `play` command, as read from the car's own MediaService. |
 | Build fixes | Replaces upstream calls to Bluetooth functions that were never published in the EVHardware submodule, so the tree compiles. The build script finds the Android SDK and writes the APK to `dist/`. |
 | Diagnostics | Reports record the firmware profile, video renderer, audio mode, car audio source, microphone source and every wheel key. |
@@ -43,12 +49,14 @@ All in DiPlay's settings screen. Changes apply the next time CarPlay connects.
 | Setting | Where | Default on SWI165 |
 |---|---|---|
 | CarPlay audio over Wi-Fi | Audio routing | On. Off uses the car's Bluetooth Music instead. |
-| Calls over CarPlay only | Audio routing | Off. On also disconnects the car's hands-free while CarPlay runs, so calls can't fall back to Bluetooth. |
+| Calls over CarPlay only | Audio routing | On. Disconnects the car's hands-free while CarPlay runs, so calls can't fall back to Bluetooth. A saved choice still wins. |
+| Microphone (test) | Audio routing | Automatic. Call processing for calls, voice recognition for Siri. Plain microphone or call processing can be chosen to compare. |
 | Overlay video renderer | Display and performance | On. Turn off if the picture flickers or stays black. |
 | Square corners | Display and performance | On. Describes the screen like the stock CarPlay app, so iOS doesn't draw rounded corners. |
-| Music buffer | Display and performance | 750 ms. Try 1000 ms if music skips on a weak Wi-Fi link. |
-
 | Efficient video (HEVC) | Display and performance | On. Half the Wi-Fi data of H.264. The stock CarPlay app uses H.264; turn off to compare colours. |
+| Colour range (test) | Display and performance | Video range. Limited (video) or full (PC) range can be chosen to compare washed-out whites. |
+| Music buffer | Display and performance | 750 ms. Try 1000 ms if music skips on a weak Wi-Fi link. |
+| Directions on the dashboard (test) | MG4 vehicle | Off. Sends CarPlay directions to the instrument cluster (mg4.80). |
 
 Hidden on MG4 because the firmware profile sets them: audio focus, advanced audio channel mapping, the music audio channel and in-app updates (which point at upstream builds).
 
@@ -140,6 +148,7 @@ FairPlay receiver.
 
 - [SWI165 firmware profile and test record](docs/MG4_SWI165.md): start here
 - [Wi-Fi audio plan and car test checklist](docs/MG4_SWI165_WIFI_AUDIO_PLAN.md)
+- [Stock AllGo CarPlay app notes](docs/MG4_SWI165_ALLGO_NOTES.md): how the car's own CarPlay app handles calls and audio
 - [Release test plan: calls, music, Bluetooth and Wi-Fi](docs/MG4_SWI165_TEST_PLAN.md)
 - [Release notes](CHANGELOG.md)
 - [Platform-signed builds](docs/MG4_PLATFORM_BUILD.md)
