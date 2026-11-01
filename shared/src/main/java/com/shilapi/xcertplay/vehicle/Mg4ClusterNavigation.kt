@@ -41,8 +41,8 @@ object Mg4ClusterNavigation {
     private const val TX_REMAINING_DISTANCE = 39
     private const val TICK_MILLIS = 1_000L
 
-    private val thread = HandlerThread("mg4-cluster-nav").apply { start() }
-    private val handler = Handler(thread.looper)
+    // Lazy so the pure [icon] mapping can be used (and unit tested) without starting a thread.
+    private val handler by lazy { Handler(HandlerThread("mg4-cluster-nav").apply { start() }.looper) }
     private val route = BydHudRouteState()
     @Volatile private var binder: IBinder? = null
     private var bound = false
