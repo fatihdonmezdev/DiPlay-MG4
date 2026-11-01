@@ -1,3 +1,7 @@
+# MG4CPlay 0.2.9-mg4.88 (SWI165 fork), 2026-11-02
+
+- **Download to iPhone (test).** Settings > Diagnostics has a new **Download to iPhone** button next to **Save diagnostic report**, so a report no longer needs a USB stick. During wireless CarPlay the iPhone is already on the car's Wi-Fi (the car hotspot `ap0`, or the Wi-Fi Direct `p2p-*` group), so MG4CPlay builds the same redacted report and serves it once from a small web server bound only to that network's IPv4 address. A dialog shows a QR code and the link; scan it with the iPhone camera, and Safari downloads `MG4CPlay-<time>.txt` to share with AirDrop or save to Files. The link has a random 128-bit one-time path (anything else gets a 404) and stops after one download, after 5 minutes, or when the dialog closes. The button is greyed out in USB mode or when wireless CarPlay isn't connected. The log shows `Report download served bytes= ms=`, `Report download expired` or `Report download stopped`.
+
 # MG4CPlay 0.2.9-mg4.86 (SWI165 fork), 2026-11-01
 
 - **Wi-Fi Direct on Android 9 (test).** Wi-Fi Direct was hidden on Android 9 because the upstream code needs Android 10 calls to set the group's name, passphrase and channel. MG4CPlay runs as the system user on the MG4, so a separate Android 9 path now uses the older `createGroup` (system-made `DIRECT-xx` name and passphrase, sent to the iPhone over Bluetooth as usual) and the hidden `setWifiP2pChannels` call to steer the channel. Choose **Wi-Fi Direct** in the wireless link settings, with the car's Wi-Fi switch on and the car hotspot off.

@@ -77,6 +77,14 @@ end, wait a few seconds, then copy it off.
 | F6 | If F5 fails or is on 5 GHz and stutters, set band **2.4 GHz only** and repeat | CarPlay starts on 2.4 GHz | `band=2.4 GHz` |
 | F7 | Repeat B (music) and C (calls) on Wi-Fi Direct and compare with the car hotspot | Fewer skips and less call static than the hotspot | `Audio loss` lines and `call loss packets=` at hang-up, for both modes |
 
+## G. Getting the report
+
+| # | Step | Pass | Log lines |
+|---|---|---|---|
+| G1 | mg4.88: with wireless CarPlay connected, open MG4CPlay > Settings > Diagnostics, tap **Download to iPhone**, scan the QR code with the iPhone camera and open the link | Safari downloads `MG4CPlay-<time>.txt`; the dialog says it was sent; the file opens in Files and can be AirDropped to the Mac | `Report download served bytes= ms=` |
+| G2 | Open the same link again, or wait 5 minutes without scanning | The link no longer loads; after 5 minutes the dialog says the link expired | `Report download expired` |
+| G3 | Switch to USB CarPlay (or disconnect) and open Diagnostics | **Download to iPhone** is greyed out with a short explanation | n/a |
+
 ## Known risks to check in code before release
 
 | # | Risk | Why | What to check |
