@@ -265,7 +265,12 @@ class AndroidMediaSink(
 
     override fun onMicrophoneStarted(id: AudioStreamId, config: MicrophoneConfig) {
         val uplink = microphoneUplinks.computeIfAbsent(id) { MicrophoneUplink(config) }
-        if (!uplink.start()) microphoneUplinks.remove(id, uplink)
+        val started = uplink.start()
+        onAudioDiagnostic(
+            "Microphone ${config.audioType}: ${if (started) "started" else "failed"} " +
+                "source=${uplink.sourceUsed} rate=${config.sampleRate} channels=${config.channels}",
+        )
+        if (!started) microphoneUplinks.remove(id, uplink)
     }
 
     override fun onMicrophoneStopped(id: AudioStreamId) {
@@ -320,6 +325,7 @@ class AndroidMediaSink(
             navigationStreamType,
             mediaBufferMillis,
             onAudioDiagnostic,
+            audioMode,
         ).also { audioRenderers[id] = it }
     }
 
@@ -700,6 +706,7 @@ private class AudioRenderer(
     private val navigationStreamType: Int,
     private val mediaBufferMillis: Int,
     private val report: (String) -> Unit,
+    private val audioMode: AudioMode = AudioMode.HYBRID_BLUETOOTH,
 ) : Closeable {
     private data class AudioPacket(val rtp: ByteArray, val sample: Int)
 
@@ -929,6 +936,12 @@ private class AudioRenderer(
             AudioManager.STREAM_MUSIC
         } else mediaChannel
         AudioChannel.NAVIGATION -> navigationChannel
+        // Wi-Fi audio on Android 9: the iPhone routes calls to CarPlay, and an MG4 head unit
+        // did not play USAGE_VOICE_COMMUNICATION from an app (silent outgoing call, mg4.65).
+        // Use the music stream, which is known to reach the speakers on this firmware.
+        AudioChannel.PHONE -> if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P && audioMode == AudioMode.CARPLAY_WIFI) {
+            AudioManager.STREAM_MUSIC
+        } else 0
         else -> 0
     }
 

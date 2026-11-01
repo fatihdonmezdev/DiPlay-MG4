@@ -65,27 +65,15 @@ internal class MicrophoneUplink(private val config: MicrophoneConfig) : Closeabl
             return false
         }
         val bufferSize = maxOf(minBuffer * 2, config.frameBytes * 4)
-        val nextRecorder = try {
-            AudioRecord.Builder()
-                .setAudioSource(source)
-                .setAudioFormat(
-                    AndroidAudioFormat.Builder()
-                        .setEncoding(AndroidAudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(config.sampleRate)
-                        .setChannelMask(channelMask)
-                        .build(),
-                )
-                .setBufferSizeInBytes(bufferSize)
-                .build()
-        } catch (error: Exception) {
-            Log.e(TAG, "microphone recorder creation failed", error)
-            nextEncoder?.close()
-            running.set(false)
-            return false
-        }
-        if (nextRecorder.state != AudioRecord.STATE_INITIALIZED) {
-            Log.w(TAG, "microphone recorder failed to initialize")
-            nextRecorder.release()
+        // Head units can refuse the call-processing source outside their own hands-free call
+        // (seen as silent calls with Wi-Fi audio on an MG4); fall back to the plain microphone.
+        val nextRecorder = createRecorder(source, channelMask, bufferSize)?.also { sourceUsed = sourceName(source) }
+            ?: if (source != MediaRecorder.AudioSource.MIC) {
+                createRecorder(MediaRecorder.AudioSource.MIC, channelMask, bufferSize)
+                    ?.also { sourceUsed = "${sourceName(source)} refused, MIC" }
+            } else null
+        if (nextRecorder == null) {
+            sourceUsed = "none (${sourceName(source)} and MIC refused)"
             nextEncoder?.close()
             running.set(false)
             return false
@@ -125,6 +113,42 @@ internal class MicrophoneUplink(private val config: MicrophoneConfig) : Closeabl
             release()
             false
         }
+    }
+
+    /** Which recording source opened, for the diagnostic log. */
+    @Volatile var sourceUsed: String = "not started"
+        private set
+
+    private fun createRecorder(source: Int, channelMask: Int, bufferSize: Int): AudioRecord? {
+        val recorder = try {
+            AudioRecord.Builder()
+                .setAudioSource(source)
+                .setAudioFormat(
+                    AndroidAudioFormat.Builder()
+                        .setEncoding(AndroidAudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(config.sampleRate)
+                        .setChannelMask(channelMask)
+                        .build(),
+                )
+                .setBufferSizeInBytes(bufferSize)
+                .build()
+        } catch (error: Exception) {
+            Log.e(TAG, "microphone recorder creation failed source=${sourceName(source)}", error)
+            return null
+        }
+        if (recorder.state != AudioRecord.STATE_INITIALIZED) {
+            Log.w(TAG, "microphone recorder failed to initialize source=${sourceName(source)}")
+            recorder.release()
+            return null
+        }
+        return recorder
+    }
+
+    private fun sourceName(source: Int): String = when (source) {
+        MediaRecorder.AudioSource.VOICE_COMMUNICATION -> "VOICE_COMMUNICATION"
+        MediaRecorder.AudioSource.VOICE_RECOGNITION -> "VOICE_RECOGNITION"
+        MediaRecorder.AudioSource.MIC -> "MIC"
+        else -> source.toString()
     }
 
     private fun capture(recorder: AudioRecord, socket: DatagramSocket) {
