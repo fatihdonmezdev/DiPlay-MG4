@@ -5,7 +5,7 @@ Wireless CarPlay for the MG4 head unit. This is a personal fork of
 for an Australian **MG4 on SWI165 firmware** (`SWI165-29176-1100R11`, Android 9,
 AUTUS SAIC MT2712, 1920x720 panel). Upstream is tested on SWI69.
 
-Current build: **0.2.9-mg4.69**. Car-test builds install as
+Current build: **0.2.9-mg4.70**. Car-test builds install as
 `com.shihab.diplay.hudtest`, alongside any upstream `com.shihab.diplay` install.
 Run one at a time.
 
@@ -44,6 +44,7 @@ All in DiPlay's settings screen. Changes apply the next time CarPlay connects.
 |---|---|---|
 | CarPlay audio over Wi-Fi | Audio routing | On. Off uses the car's Bluetooth Music instead. |
 | Overlay video renderer | Display and performance | On. Turn off if the picture flickers or stays black. |
+| Square corners (test) | Display and performance | Off. Try on if CarPlay shows rounded black corners (the stock CarPlay app does not). |
 | Audio focus | Audio routing | Leave off in Bluetooth Music mode, where it can stop the car switching source. |
 
 ## Building on a Mac

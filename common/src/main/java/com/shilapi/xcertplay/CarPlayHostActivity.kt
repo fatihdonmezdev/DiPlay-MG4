@@ -828,7 +828,8 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         appendLog(
             "Video renderer ${if (surfaceVideo) "SurfaceView" else "TextureView"} " +
-                "firmware=${firmware.firmware ?: "unknown"} profile=${firmware.generation}",
+                "firmware=${firmware.firmware ?: "unknown"} profile=${firmware.generation} " +
+                "viewAreas=${!AirPlayPersistence.loadPlainDisplayArea(this)}",
         )
         val gestureLayer = View(this).apply {
             isClickable = true
@@ -2839,6 +2840,7 @@ class CarPlayHostActivity : ComponentActivity() {
             // Always offer Opus input: wireless iPhones treat the car as screen-only without it
             // (mg4.67 lost all CarPlay audio). Android 9 encodes it in software (Concentus).
             microphoneOpus = true,
+            viewAreas = !AirPlayPersistence.loadPlainDisplayArea(this),
             manufacturer = normalizedManufacturer(),
             model = normalizedModel(),
             oemLabel = oemLabel,

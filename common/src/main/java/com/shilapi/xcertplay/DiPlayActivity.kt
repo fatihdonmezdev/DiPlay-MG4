@@ -321,6 +321,10 @@ class DiPlayActivity : ComponentActivity() {
                 AirPlayPersistence.loadSurfaceVideoRenderer(this) ?: Mg4FirmwareProfile.detect().preferSurfaceVideo) {
                 AirPlayPersistence.saveSurfaceVideoRenderer(this, it)
             }
+            toggle(card, getString(R.string.plain_display_area), getString(R.string.plain_display_area_description),
+                AirPlayPersistence.loadPlainDisplayArea(this)) {
+                AirPlayPersistence.savePlainDisplayArea(this, it)
+            }
         }
         section(content, getString(R.string.audio_routing)) { card ->
             toggle(card, getString(R.string.carplay_wifi_audio), getString(R.string.carplay_wifi_audio_description),

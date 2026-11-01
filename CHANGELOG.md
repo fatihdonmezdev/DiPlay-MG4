@@ -1,3 +1,7 @@
+# MG4CPlay 0.2.9-mg4.70 (SWI165 fork), 2026-11-01
+
+- Test switch for the rounded black corners the iPhone draws on CarPlay (the stock CarPlay app shows square corners). **Display and performance > Square corners (test)** describes the screen without view areas, the way older factory receivers do. Off by default; the log's video renderer line records `viewAreas=true|false`.
+
 # MG4CPlay 0.2.9-mg4.69 (SWI165 fork), 2026-11-01
 
 - Fix: no CarPlay audio at all in mg4.67 and mg4.68. Those builds stopped offering Opus for the microphone on Android 9, and the iPhone then treated the car as screen-only: CarPlay was not offered as an audio output, so music and calls stayed on Bluetooth while DiPlay had released the car's Bluetooth music. DiPlay offers Opus again.

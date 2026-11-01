@@ -40,6 +40,7 @@ object AirPlayPersistence {
     private const val KEY_HEVC_ENABLED = "hevc_enabled"
     private const val KEY_HEVC_SOFTWARE_DECODER = "hevc_software_decoder"
     private const val KEY_SURFACE_VIDEO = "surface_video_renderer"
+    private const val KEY_PLAIN_DISPLAY = "plain_display_area"
     private const val KEY_AUDIO_MODE = "audio_mode"
     private const val KEY_ADVANCED_AUDIO_CHANNEL_MAPPING = "advanced_audio_channel_mapping"
     private const val KEY_AUDIO_FOCUS_ENABLED = "audio_focus_enabled"
@@ -138,6 +139,16 @@ object AirPlayPersistence {
     fun saveSurfaceVideoRenderer(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_SURFACE_VIDEO, enabled)
+            .apply()
+    }
+
+    /** True sends a plain full-screen display without view areas (test for iOS rounded corners). */
+    fun loadPlainDisplayArea(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_PLAIN_DISPLAY, false)
+
+    fun savePlainDisplayArea(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_PLAIN_DISPLAY, enabled)
             .apply()
     }
 
