@@ -164,9 +164,14 @@ object AirPlayPersistence {
             .apply()
     }
 
-    /** True sends a plain full-screen display without view areas (test for iOS rounded corners). */
-    fun loadPlainDisplayArea(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_PLAIN_DISPLAY, false)
+    /**
+     * True sends a plain full-screen display without view areas (square corners). Null until the
+     * user picks; callers then use the firmware profile's default.
+     */
+    fun loadPlainDisplayArea(context: Context): Boolean? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return if (prefs.contains(KEY_PLAIN_DISPLAY)) prefs.getBoolean(KEY_PLAIN_DISPLAY, false) else null
+    }
 
     fun savePlainDisplayArea(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()

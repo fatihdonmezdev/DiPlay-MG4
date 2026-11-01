@@ -327,7 +327,7 @@ class DiPlayActivity : ComponentActivity() {
                 AirPlayPersistence.saveSurfaceVideoRenderer(this, it)
             }
             toggle(card, getString(R.string.plain_display_area), getString(R.string.plain_display_area_description),
-                AirPlayPersistence.loadPlainDisplayArea(this)) {
+                AirPlayPersistence.loadPlainDisplayArea(this) ?: Mg4FirmwareProfile.detect().squareCorners) {
                 AirPlayPersistence.savePlainDisplayArea(this, it)
             }
         }

@@ -1,3 +1,8 @@
+# MG4CPlay 0.2.9-mg4.75 (SWI165 fork), 2026-11-01
+
+- **Square corners** is now on by default on SWI165 (confirmed on the car in mg4.70) and no longer marked as a test. Other firmware keeps view areas. A saved choice still wins.
+- Video stall watchdog: no keyframe requests while CarPlay is hidden behind another app. mg4.71 logged one every ~10 s in that state, each making the iPhone send a full frame nobody could see. A keyframe is still requested when CarPlay comes back.
+
 # MG4CPlay 0.2.9-mg4.74 (SWI165 fork), 2026-11-01
 
 - Ask the iPhone to resend lost audio packets. The mg4.71 counters showed every resend request was skipped because DiPlay didn't know the iPhone's control port; it now takes it from the audio stream's SETUP when given. The log records the request keys and the port.
