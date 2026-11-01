@@ -1,6 +1,7 @@
 package com.shilapi.xcertplay
 
 import android.content.Context
+import com.shilapi.xcertplay.orchestration.ManualHotspotBand
 import com.shilapi.xcertplay.orchestration.WirelessHotspotMode
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -35,8 +36,20 @@ class HotspotModeMigrationTest {
         assertEquals(WirelessHotspotMode.WIFI_P2P, AirPlayPersistence.loadWirelessHotspotMode(context))
     }
 
-    @Test @Config(sdk = [28]) fun olderAndroidDoesNotFallBackToRemovedLocalMode() {
+    @Test @Config(sdk = [28]) fun android9KeepsWifiDirect() {
         prefs.edit().putString("wireless_hotspot_mode", "WIFI_P2P").apply()
+        assertEquals(WirelessHotspotMode.WIFI_P2P, AirPlayPersistence.loadWirelessHotspotMode(context))
+    }
+
+    @Test @Config(sdk = [28]) fun android9DoesNotFallBackToRemovedLocalMode() {
+        prefs.edit().putString("wireless_hotspot_mode", "LOCAL_ONLY_HOTSPOT").apply()
         assertEquals(WirelessHotspotMode.MANUAL, AirPlayPersistence.loadWirelessHotspotMode(context))
+    }
+
+    @Test fun wifiDirectBandDefaultsToAutomaticAndIsSaved() {
+        prefs.edit().clear().apply()
+        assertEquals(ManualHotspotBand.AUTO, AirPlayPersistence.loadWifiDirectBand(context))
+        AirPlayPersistence.saveWifiDirectBand(context, ManualHotspotBand.GHZ_2_4)
+        assertEquals(ManualHotspotBand.GHZ_2_4, AirPlayPersistence.loadWifiDirectBand(context))
     }
 }

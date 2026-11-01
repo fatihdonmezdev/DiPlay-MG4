@@ -1,0 +1,35 @@
+package com.shilapi.xcertplay.network
+
+import com.shilapi.xcertplay.orchestration.ManualHotspotBand
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class LegacyP2pChannelPlanTest {
+    @Test fun automaticTriesFiveGhzThenTwoGhzThenFrameworkChoice() {
+        assertEquals(listOf(36, 149, 6, 1, 11, 0), LegacyP2pChannelPlan.plan(ManualHotspotBand.AUTO, null, true))
+    }
+
+    @Test fun automaticSkipsFiveGhzWhenTheRadioCannot() {
+        assertEquals(listOf(6, 1, 11, 0), LegacyP2pChannelPlan.plan(ManualHotspotBand.AUTO, null, false))
+    }
+
+    @Test fun twoGhzOnlyNeverAsksForFiveGhz() {
+        assertEquals(listOf(6, 1, 11, 0), LegacyP2pChannelPlan.plan(ManualHotspotBand.GHZ_2_4, null, true))
+    }
+
+    @Test fun connectedStationChannelGoesFirstWhenItSuitsTheBand() {
+        assertEquals(listOf(11, 36, 149, 6, 1, 0), LegacyP2pChannelPlan.plan(ManualHotspotBand.AUTO, 2462, true))
+        assertEquals(listOf(1, 6, 11, 0), LegacyP2pChannelPlan.plan(ManualHotspotBand.GHZ_2_4, 2412, true))
+        assertEquals(listOf(6, 1, 11, 0), LegacyP2pChannelPlan.plan(ManualHotspotBand.GHZ_2_4, 5180, true))
+    }
+
+    @Test fun wifiDirectInterfacesCanBeRead() {
+        assertTrue(LegacyHotspotRadio.isReadableInterface("p2p-wlan0-0"))
+        assertTrue(LegacyHotspotRadio.isReadableInterface("p2p0"))
+        assertTrue(LegacyHotspotRadio.isReadableInterface("ap0"))
+        assertFalse(LegacyHotspotRadio.isReadableInterface("p2p-wlan0-0;rm"))
+        assertFalse(LegacyHotspotRadio.isReadableInterface("eth0"))
+    }
+}

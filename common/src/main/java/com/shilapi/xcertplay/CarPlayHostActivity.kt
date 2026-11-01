@@ -159,6 +159,7 @@ class CarPlayHostActivity : ComponentActivity() {
         manualHotspotBand = manualHotspotBand,
         manualHotspotChannel = manualHotspotChannel,
         manualHotspotSecurity = manualHotspotSecurity,
+        wifiDirectBand = wifiDirectBand,
         locationReportingEnabled = locationReportingEnabled,
     )
 
@@ -322,6 +323,7 @@ class CarPlayHostActivity : ComponentActivity() {
     private var manualHotspotSsid = ""
     private var manualHotspotPassphrase = ""
     private var manualHotspotBand = ManualHotspotBand.AUTO
+    private var wifiDirectBand = ManualHotspotBand.AUTO
     private var manualHotspotChannel = 0
     private var manualHotspotSecurity = ManualHotspotSecurity.OPEN
     private var awaitingVpnConsent = false
@@ -515,6 +517,7 @@ class CarPlayHostActivity : ComponentActivity() {
         manualHotspotSsid = AirPlayPersistence.loadManualHotspotSsid(this)
         manualHotspotPassphrase = AirPlayPersistence.loadManualHotspotPassphrase(this)
         manualHotspotBand = AirPlayPersistence.loadManualHotspotBand(this)
+        wifiDirectBand = AirPlayPersistence.loadWifiDirectBand(this)
         manualHotspotChannel = AirPlayPersistence.loadManualHotspotChannel(this)
         manualHotspotSecurity = AirPlayPersistence.loadManualHotspotSecurity(this)
         wirelessPermissionsReady = !wirelessEnabled || hasRequiredWirelessPermissions()
@@ -2342,9 +2345,7 @@ class CarPlayHostActivity : ComponentActivity() {
             setPadding(0, dp(8), 0, 0)
         }
         val modes = buildList {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                add(WirelessHotspotMode.WIFI_P2P to getString(R.string.wi_fi_p2p_5_ghz))
-            }
+            add(WirelessHotspotMode.WIFI_P2P to hotspotModeLabel(WirelessHotspotMode.WIFI_P2P))
             add(WirelessHotspotMode.MANUAL to getString(R.string.built_in_car_hotspot))
         }
         var selectedId = View.NO_ID
@@ -2552,7 +2553,11 @@ class CarPlayHostActivity : ComponentActivity() {
     }
 
     private fun hotspotModeLabel(mode: WirelessHotspotMode): String = when (mode) {
-        WirelessHotspotMode.WIFI_P2P -> getString(R.string.wi_fi_p2p_5_ghz)
+        WirelessHotspotMode.WIFI_P2P -> if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            getString(R.string.wifi_direct)
+        } else {
+            getString(R.string.wi_fi_p2p_5_ghz)
+        }
         WirelessHotspotMode.LOCAL_ONLY_HOTSPOT -> getString(R.string.localonlyhotspot)
         WirelessHotspotMode.MANUAL -> getString(R.string.manual_hotspot)
     }

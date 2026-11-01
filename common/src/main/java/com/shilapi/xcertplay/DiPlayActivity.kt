@@ -39,6 +39,7 @@ import com.shilapi.xcertplay.hud.BydAdbAccess
 import com.shilapi.xcertplay.hud.BydOutputSettings
 import com.shilapi.xcertplay.host.R
 import com.shilapi.xcertplay.network.CarHotspotController
+import com.shilapi.xcertplay.orchestration.ManualHotspotBand
 import com.shilapi.xcertplay.orchestration.WirelessHotspotMode
 import com.shilapi.xcertplay.transport.EvChargingConnectors
 import java.io.File
@@ -796,6 +797,7 @@ class DiPlayActivity : ComponentActivity() {
         } else {
             parent.addView(label(getString(R.string.turn_the_car_s_wi_fi_switch_on_allow_location_nearby_devic), 16, MUTED))
             parent.addView(button(getString(R.string.open_car_wi_fi_settings), false) { openCarClientWifiSettings() }, matchButton(12, 60))
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) wifiDirectBandControls(parent)
         }
     }
 
@@ -1103,6 +1105,23 @@ class DiPlayActivity : ComponentActivity() {
     // its current link. The position choices need no call: getString(R.string.apply_and_reconnect) already does it.
     private fun reconnectForClusterMap() {
         if (CarPlayBackgroundSession.hasSession()) connect(AirPlayPersistence.loadWirelessEnabled(this))
+    }
+
+    /** Android 9 only: Wi-Fi Direct channel choice (Android 10+ picks the band itself). */
+    private fun wifiDirectBandControls(parent: LinearLayout) {
+        val current = AirPlayPersistence.loadWifiDirectBand(this)
+        parent.addView(label(getString(R.string.wifi_direct_band), 18, TEXT, true).apply { setPadding(0, dp(16), 0, dp(4)) })
+        listOf(
+            ManualHotspotBand.AUTO to getString(R.string.wifi_direct_band_auto),
+            ManualHotspotBand.GHZ_2_4 to getString(R.string.wifi_direct_band_2_4),
+        ).forEach { (band, title) ->
+            parent.addView(button("${if (current == band) "✓  " else ""}$title", current == band) {
+                AirPlayPersistence.saveWifiDirectBand(this, band)
+                render()
+                toast(getString(R.string.saved_for_your_next_connection))
+            }, matchButton(8, 60))
+        }
+        parent.addView(label(getString(R.string.wifi_direct_band_desc), 15, MUTED).apply { setPadding(0, dp(6), 0, 0) })
     }
 
     private fun applyWirelessLink(mode: WirelessHotspotMode) {

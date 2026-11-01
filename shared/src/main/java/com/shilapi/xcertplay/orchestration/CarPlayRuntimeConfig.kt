@@ -61,6 +61,8 @@ class CarPlayRuntimeConfig(
     val manualHotspotBand: ManualHotspotBand = ManualHotspotBand.AUTO,
     val manualHotspotChannel: Int = 0,
     val manualHotspotSecurity: ManualHotspotSecurity = ManualHotspotSecurity.WPA2,
+    /** Android 9 Wi-Fi Direct only: AUTO tries 5 GHz then 2.4 GHz; GHZ_2_4 stays on 2.4 GHz. */
+    val wifiDirectBand: ManualHotspotBand = ManualHotspotBand.AUTO,
     val wirelessBluetoothDeviceAddress: String? = null,
     val locationReportingEnabled: Boolean = false,
 ) {
