@@ -25,7 +25,7 @@ internal object OtaUpdater {
     private const val TAG = "DiPlay_OTA"
     private const val SHELL_TMP_DIR = "/data/local/tmp"
     private const val STAGED_APK_NAME = "mg4cplay-update.apk"
-    private const val RELEASES = "https://api.github.com/repos/fatihdonmezdev/DiPlay-MG4/releases?per_page=20"
+    private const val RELEASES = "https://api.github.com/repos/andrew-snape/DiPlay-MG4/releases?per_page=20"
     private val worker = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 

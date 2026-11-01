@@ -128,11 +128,11 @@ component, so `mg4.9` sorts *below* `mg4.10`.
 
 ## Publishing a release
 
-Releases go to **`fatihdonmezdev/DiPlay-MG4`**. The OTA updater reads exactly this repo.
+Releases go to **`andrew-snape/DiPlay-MG4`**. The OTA updater reads exactly this repo.
 
 ```bash
 gh release create "v$VERSION" "/tmp/MG4CPlay-v$VERSION.apk" \
-  --repo fatihdonmezdev/DiPlay-MG4 \
+  --repo andrew-snape/DiPlay-MG4 \
   --title "MG4CPlay $VERSION" \
   --notes-file /tmp/notes.md
 ```
@@ -151,7 +151,7 @@ separate hash file. If you replace an asset after publishing, use
 `gh release upload … --clobber` and confirm the digest changed:
 
 ```bash
-gh api repos/fatihdonmezdev/DiPlay-MG4/releases/tags/"v$VERSION" --jq '.assets[0].digest'
+gh api repos/andrew-snape/DiPlay-MG4/releases/tags/"v$VERSION" --jq '.assets[0].digest'
 shasum -a 256 "/tmp/MG4CPlay-v$VERSION.apk"
 ```
 
@@ -211,7 +211,7 @@ git push mg4 main
 [ ] aapt dump badging shows the expected package + version
 [ ] installed and smoke-tested on the car
 [ ] committed and pushed to mg4/main
-[ ] gh release create on fatihdonmezdev/DiPlay-MG4
+[ ] gh release create on andrew-snape/DiPlay-MG4
 [ ] release digest matches the local shasum
 ```
 

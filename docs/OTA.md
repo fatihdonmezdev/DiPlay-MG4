@@ -22,7 +22,7 @@ to install it.
 
 ## The flow
 
-1. **Check** — `GET https://api.github.com/repos/fatihdonmezdev/DiPlay-MG4/releases?per_page=20`.
+1. **Check** — `GET https://api.github.com/repos/andrew-snape/DiPlay-MG4/releases?per_page=20`.
    Drafts and prereleases are skipped. A release qualifies when its tag parses to a
    higher version than `versionName` and it carries an asset named `MG4CPlay-*.apk`
    whose GitHub `digest` field is a valid SHA-256.
@@ -72,7 +72,7 @@ DiAuto-MG4 hit the same wall and settled on the same fallback.
 
 See [`RELEASING.md`](./RELEASING.md). The parts OTA depends on:
 
-- The release is on **`fatihdonmezdev/DiPlay-MG4`**, not a prerelease, not a draft.
+- The release is on **`andrew-snape/DiPlay-MG4`**, not a prerelease, not a draft.
 - The tag parses to a higher version than what is installed (`v0.2.9-mg4.54` → `0.2.9.54`).
 - Exactly one asset named `MG4CPlay-v<version>.apk`.
 - The APK is signed with the same platform key as the installed build, or the
