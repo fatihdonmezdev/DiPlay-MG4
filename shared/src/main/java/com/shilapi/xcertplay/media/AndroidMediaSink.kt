@@ -764,6 +764,10 @@ private class AudioRenderer(
     @Volatile private var running = true
     @Volatile private var started = false
     private var codec: MediaCodec? = null
+    /** Wi-Fi calls decode in software so lost packets can be hidden (mg4.84). */
+    private val concealCallLoss =
+        audioMode == AudioMode.CARPLAY_WIFI && format.audioType == "telephony"
+    private var callDecoder: OpusCallDecoder? = null
     private var track: AudioTrack? = null
     private var pcm = ByteArray(64 * 1024)
     @Volatile private var playbackStarted = false
@@ -857,7 +861,15 @@ private class AudioRenderer(
             stage = "decoder setup"
             when (format.codec) {
                 AudioCodecKind.AAC_LC -> configureCodec(MediaFormat.MIMETYPE_AUDIO_AAC)
-                AudioCodecKind.OPUS -> configureCodec(MediaFormat.MIMETYPE_AUDIO_OPUS)
+                AudioCodecKind.OPUS -> if (concealCallLoss) {
+                    callDecoder = runCatching { OpusCallDecoder() }
+                        .onFailure { Log.w(TAG, "software call decoder unavailable", it) }
+                        .getOrNull()
+                    report("Audio: call decoder=${if (callDecoder != null) "software, hides lost packets" else "unavailable"}")
+                    if (callDecoder == null) configureCodec(MediaFormat.MIMETYPE_AUDIO_OPUS)
+                } else {
+                    configureCodec(MediaFormat.MIMETYPE_AUDIO_OPUS)
+                }
                 AudioCodecKind.LPCM -> Unit
             }
             stage = "track setup"
@@ -883,6 +895,7 @@ private class AudioRenderer(
             }
         } finally {
             runCatching { logStatsIfDue(force = true) }
+            callDecoder?.let { decoder -> runCatching { report("Audio: call loss ${decoder.summary()}") } }
             runCatching {
                 report(
                     "Audio: renderer ended audioType=${format.audioType} stage=$stage " +
@@ -1182,6 +1195,16 @@ private class AudioRenderer(
             }
             AudioCodecKind.OPUS -> {
                 val accessUnit = rtp.copyOfRange(12, rtp.size)
+                callDecoder?.let { decoder ->
+                    if (inputQueued == 0) stage = "decoding first packet"
+                    val sequence = ((rtp[2].toInt() and 0xff) shl 8) or (rtp[3].toInt() and 0xff)
+                    decoder.decode(sequence, accessUnit) { pcm ->
+                        outputBuffers++
+                        writePcm(pcm)
+                    }
+                    inputQueued++
+                    return
+                }
                 if (accessUnit.size < MIN_OPUS_PACKET_BYTES) {
                     if (!firstOpusShortPacketLogged) {
                         firstOpusShortPacketLogged = true

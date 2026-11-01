@@ -206,6 +206,9 @@ internal object OpusWarmUp {
         Thread({
             runCatching {
                 val encoder = OpusEncoder(48_000)
+                // Calls also decode in software (mg4.84); warm that path up with the same frames.
+                val decoder = OpusCallDecoder()
+                var sequence = 0
                 val frame = ByteArray(960 * 2)
                 var seed = 1
                 repeat(WARM_FRAMES) {
@@ -216,7 +219,11 @@ internal object OpusWarmUp {
                         frame[index] = sample.toByte()
                         frame[index + 1] = (sample shr 8).toByte()
                     }
-                    encoder.encode(frame)
+                    encoder.encode(frame).forEach { packet ->
+                        // Skip every tenth sequence number so concealment and FEC warm up too.
+                        sequence += if (sequence % 10 == 9) 2 else 1
+                        decoder.decode(sequence and 0xffff, packet) {}
+                    }
                 }
                 encoder.close()
             }
