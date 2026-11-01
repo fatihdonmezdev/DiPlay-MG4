@@ -1,9 +1,13 @@
-# MG4CPlay 0.2.9-mg4.85 (SWI165 fork), 2026-11-01
+# MG4CPlay 0.2.9-mg4.86 (SWI165 fork), 2026-11-01
 
 - **Wi-Fi Direct on Android 9 (test).** Wi-Fi Direct was hidden on Android 9 because the upstream code needs Android 10 calls to set the group's name, passphrase and channel. MG4CPlay runs as the system user on the MG4, so a separate Android 9 path now uses the older `createGroup` (system-made `DIRECT-xx` name and passphrase, sent to the iPhone over Bluetooth as usual) and the hidden `setWifiP2pChannels` call to steer the channel. Choose **Wi-Fi Direct** in the wireless link settings, with the car's Wi-Fi switch on and the car hotspot off.
 - New **Wi-Fi Direct band** choice on Android 9: **Automatic (5 GHz first)** tries channels 36 and 149, then 6, 1 and 11, then the system's own choice; **2.4 GHz only** skips 5 GHz. Each channel gets up to 7 s before the next is tried. The channel is read back from the driver and never assumed.
 - On disconnect the group is removed, the persistent group Android 9 saves is deleted, and the channel restriction is cleared so the stock apps are unaffected.
 - The log shows `Wi-Fi P2P legacy plan channels=`, `setChannels operating= ... code=`, `create accepted` or `create rejected code=`, and `Wi-Fi P2P ready mode=LEGACY band= channel= frequencyMHz=`.
+
+# MG4CPlay 0.2.9-mg4.85 (SWI165 fork), 2026-11-01
+
+- **Temporary: the diagnostic report carries the stock AllGo apps' code.** The cluster reads CarPlay song details only from the stock `com.allgo.remoteui.mediabrowserservice` media session (see [docs/MG4_SWI165_CLUSTER_MEDIA_NOTES.md](docs/MG4_SWI165_CLUSTER_MEDIA_NOTES.md)). That app is exported with no permission and has a `...RemoteUIMediaBrowserServiceInterface` action that looks like its feed, but its APK has no code: it was compiled ahead of time into `oat/<abi>/*.vdex` and `.odex` beside the APK. On MG4, the report now ends with a `Stock app code` section holding those files for `com.allgo.remoteui.mediabrowserservice` and `com.allgo.rui`, base64-encoded with size and SHA-256 (read-only, 6 MB per file, 12 MB in all). This replaces pulling them with ADB and will be removed once read.
 
 # MG4CPlay 0.2.9-mg4.84 (SWI165 fork), 2026-11-01
 
