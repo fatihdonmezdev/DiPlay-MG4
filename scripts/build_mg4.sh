@@ -40,6 +40,12 @@ DELIVERY_APK="$DELIVERY_DIR/MG4CPlay-v$VERSION.apk"
 : "${DIPLAY_AUTH_ASSETS_DIR:?Set DIPLAY_AUTH_ASSETS_DIR to the directory containing offline-mfi/}"
 
 cd "$ROOT"
+# iCloud Drive (Desktop & Documents sync) leaves "name 2.ext" copies in build output, which
+# fail Android resource validation ("Failed file name validation ... ic_launcher 2.xml").
+# Remove them from build folders only; sources are never touched.
+for dir in build */build vendor/*/*/lib/build .gradle; do
+  [ -d "$dir" ] && find "$dir" -name '* [0-9].*' -type f -delete 2>/dev/null || true
+done
 if [ -n "${DIPLAY_PREBUILT_JNI_DIR:-}" ]; then
   DIPLAY_AUTH_ASSETS_DIR="$DIPLAY_AUTH_ASSETS_DIR" \
   DIPLAY_PREBUILT_JNI_DIR="$DIPLAY_PREBUILT_JNI_DIR" \
