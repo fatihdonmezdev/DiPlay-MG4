@@ -42,8 +42,5 @@ release-signing.properties
 *.apk
 *.aab
 
-# Allow public MG4 head unit platform keys in tools/
-!tools/platform.pk8
-!tools/platform.x509.pem
-!tools/platform.key
-!tools/platform.p12
+# MG4 head unit platform keys stay local; release CI restores them from secrets.
+/tools/platform.*

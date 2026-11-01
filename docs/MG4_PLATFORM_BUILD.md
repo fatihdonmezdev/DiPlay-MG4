@@ -35,7 +35,7 @@ adb uninstall com.fatih.mg4carplaywidget
 - **JDK**: Java 17 or higher compatible with the included Gradle wrapper.
 - **Android SDK**: Android SDK 34/36/37 with Build Tools installed.
 - **Android NDK**: NDK `28.2.13676358` (or configured via `build.gradle.kts`).
-- **Platform Keys**: The MG4 platform signing files (`platform.pk8` and `platform.x509.pem`) located in `tools/` within the repository (or specified via `MG4_PLATFORM_KEYS_DIR`).
+- **Platform Keys**: The MG4 platform signing files (`platform.pk8` and `platform.x509.pem`) placed in `tools/` (git-ignored, never committed) or specified via `MG4_PLATFORM_KEYS_DIR`.
 
 ## Platform Keys Location
 
@@ -47,6 +47,10 @@ tools/platform.x509.pem
 tools/platform.key
 tools/platform.p12
 ```
+
+These files are git-ignored: copy them into `tools/` yourself. The release workflow restores
+`platform.pk8` and `platform.x509.pem` from the `MG4_PLATFORM_PK8_BASE64` and
+`MG4_PLATFORM_CERT_BASE64` repository secrets instead.
 
 If your keys are stored in a custom directory, set the `MG4_PLATFORM_KEYS_DIR` environment variable to point to that directory.
 
