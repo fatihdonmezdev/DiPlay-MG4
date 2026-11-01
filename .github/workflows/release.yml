@@ -28,18 +28,24 @@ jobs:
             echo "::error::Tag $TAG does not match versionName $version in mobile/build.gradle.kts"
             exit 1
           fi
-      - name: Check signing secrets
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Restore platform key and CarPlay identity
         env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          PLATFORM_PK8: ${{ secrets.MG4_PLATFORM_PK8_BASE64 }}
+          PLATFORM_CERT: ${{ secrets.MG4_PLATFORM_CERT_BASE64 }}
+          OFFLINE_MFI: ${{ secrets.DIPLAY_OFFLINE_MFI_TGZ_BASE64 }}
         run: |
-          missing=0
-          for name in KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
-            if [ -z "${!name}" ]; then echo "::error::Repository secret for $name is not set"; missing=1; fi
+          for name in PLATFORM_PK8 PLATFORM_CERT OFFLINE_MFI; do
+            if [ -z "${!name}" ]; then echo "::error::Repository secret for $name is not set"; exit 1; fi
           done
-          exit $missing
+          keys="$RUNNER_TEMP/keys"; assets="$RUNNER_TEMP/runtime-assets"
+          mkdir -p "$keys" "$assets"
+          echo "$PLATFORM_PK8" | base64 --decode > "$keys/platform.pk8"
+          echo "$PLATFORM_CERT" | base64 --decode > "$keys/platform.x509.pem"
+          echo "$OFFLINE_MFI" | base64 --decode | tar -xz -C "$assets"
+          test -d "$assets/offline-mfi" || { echo "::error::Secret archive has no offline-mfi/ folder"; exit 1; }
+          echo "MG4_PLATFORM_KEYS_DIR=$keys" >> "$GITHUB_ENV"
+          echo "DIPLAY_AUTH_ASSETS_DIR=$assets" >> "$GITHUB_ENV"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -48,25 +54,16 @@ jobs:
         with:
           packages: platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;28.2.13676358
       - uses: gradle/actions/setup-gradle@v4
-      - name: Decode release keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-      - name: Build signed release APK
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew :mobile:assembleRelease --stacktrace
-      - name: Remove keystore
+      - name: Build platform-signed APK
+        run: ./scripts/build_mg4.sh
+      - name: Remove keys and identity
         if: always()
-        run: rm -f "$RUNNER_TEMP/release.jks"
+        run: rm -rf "$RUNNER_TEMP/keys" "$RUNNER_TEMP/runtime-assets"
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
-          files: mobile/build/outputs/apk/release/*.apk
+          name: MG4CPlay ${{ env.VERSION }}
+          files: dist/MG4CPlay-v${{ env.VERSION }}.apk
           fail_on_unmatched_files: true
           generate_release_notes: true
