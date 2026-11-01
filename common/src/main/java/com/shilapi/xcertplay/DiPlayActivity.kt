@@ -303,16 +303,23 @@ class DiPlayActivity : ComponentActivity() {
             toggle(card, getString(R.string.open_after_the_car_starts), getString(R.string.availability_depends_on_your_head_unit_s_startup_settings), AirPlayPersistence.loadAutoStartOnBoot(this)) { AirPlayPersistence.saveAutoStartOnBoot(this, it) }
             card.addView(button("${getString(R.string.choose_iphone_prefix)}${DiPlayPreferences.phoneName(this)}", false) { choosePhone() }, matchButton(12, 60))
         }
+        // MG4 (SWI69/SWI165) builds fix these per firmware, so their switches are hidden: HEVC is
+        // proven on both, Wi-Fi audio takes focus itself (and Bluetooth Music must not), audio
+        // routing uses the stream types that reach the MG4 speakers, and in-app updates point at
+        // upstream builds without this fork's changes.
+        val mg4 = Mg4FirmwareProfile.detect().isMg4
         section(content, getString(R.string.display_and_performance), R.drawable.ic_dp_display) { card ->
             carPlaySizeControl(card)
             choice(card, getString(R.string.resolution), listOf(getString(R.string.resolution_native), getString(R.string.s_80_lighter_load), getString(R.string.s_60_lightest_load)), listOf(10, 8, 6).indexOf(AirPlayPersistence.loadDisplayScaleTenths(this)).coerceAtLeast(0)) { AirPlayPersistence.saveDisplayScaleTenths(this, listOf(10, 8, 6)[it]) }
             val bufferPresets = com.shilapi.xcertplay.media.MediaAudioBuffer.presets
-            choice(card, getString(R.string.music_buffer), listOf(getString(R.string.s_300_ms_default), getString(R.string.s_500_ms), getString(R.string.s_1000_ms_most_stable)),
+            choice(card, getString(R.string.music_buffer), listOf(getString(R.string.music_buffer_500), getString(R.string.music_buffer_750_default), getString(R.string.s_1000_ms_most_stable)),
                 bufferPresets.indexOf(AirPlayPersistence.loadMediaBufferMillis(this)).coerceAtLeast(0)) {
                 AirPlayPersistence.saveMediaBufferMillis(this, bufferPresets[it])
             }
             choice(card, getString(R.string.frame_rate), listOf(getString(R.string.s_30_fps_lighter_load), getString(R.string.s_60_fps_smoother_motion)), if (AirPlayPersistence.loadFps(this) == 60) 1 else 0) { AirPlayPersistence.saveFps(this, if (it == 1) 60 else 30) }
-            toggle(card, getString(R.string.efficient_video), getString(R.string.use_hevc_leave_off_for_the_widest_head_unit_compatibility), AirPlayPersistence.loadHevcEnabled(this)) { AirPlayPersistence.saveHevcEnabled(this, it) }
+            toggle(card, getString(R.string.efficient_video),
+                getString(if (mg4) R.string.efficient_video_mg4_description else R.string.use_hevc_leave_off_for_the_widest_head_unit_compatibility),
+                AirPlayPersistence.loadHevcChoice(this) ?: mg4) { AirPlayPersistence.saveHevcEnabled(this, it) }
             toggle(card, getString(R.string.right_hand_drive), getString(R.string.place_carplay_s_controls_closer_to_the_driver), AirPlayPersistence.loadRightHandDrive(this)) { AirPlayPersistence.saveRightHandDrive(this, it) }
             toggle(card, getString(R.string.full_screen), getString(R.string.hide_the_car_s_system_bars_while_carplay_is_open), AirPlayPersistence.loadHideTopBar(this) && AirPlayPersistence.loadHideBottomBar(this)) {
                 AirPlayPersistence.saveHideTopBar(this, it); AirPlayPersistence.saveHideBottomBar(this, it)
@@ -320,6 +327,17 @@ class DiPlayActivity : ComponentActivity() {
             toggle(card, getString(R.string.overlay_video_renderer), getString(R.string.overlay_video_renderer_description),
                 AirPlayPersistence.loadSurfaceVideoRenderer(this) ?: Mg4FirmwareProfile.detect().preferSurfaceVideo) {
                 AirPlayPersistence.saveSurfaceVideoRenderer(this, it)
+            }
+            choice(card, getString(R.string.video_colour_range), listOf(
+                getString(R.string.video_colour_range_stream),
+                getString(R.string.video_colour_range_limited),
+                getString(R.string.video_colour_range_full),
+            ), AirPlayPersistence.loadVideoColourRange(this)) {
+                AirPlayPersistence.saveVideoColourRange(this, it)
+            }
+            toggle(card, getString(R.string.plain_display_area), getString(R.string.plain_display_area_description),
+                AirPlayPersistence.loadPlainDisplayArea(this) ?: Mg4FirmwareProfile.detect().squareCorners) {
+                AirPlayPersistence.savePlainDisplayArea(this, it)
             }
         }
         section(content, getString(R.string.audio_routing)) { card ->
@@ -329,15 +347,27 @@ class DiPlayActivity : ComponentActivity() {
                 AirPlayPersistence.saveAudioMode(this,
                     if (it) com.shilapi.xcertplay.media.AudioMode.CARPLAY_WIFI else com.shilapi.xcertplay.media.AudioMode.HYBRID_BLUETOOTH)
             }
-            toggle(card, getString(R.string.contrib_audio_home_toggle_audio_focus), getString(R.string.contrib_audio_home_toggle_audio_focus_desc), AirPlayPersistence.loadAudioFocusEnabled(this)) { AirPlayPersistence.saveAudioFocusEnabled(this, it) }
-            if (resources.getBoolean(R.bool.config_advanced_audio_channel_mapping)) {
+            toggle(card, getString(R.string.calls_over_carplay_only), getString(R.string.calls_over_carplay_only_description),
+                AirPlayPersistence.loadCallsOverCarPlayOnly(this)) {
+                AirPlayPersistence.saveCallsOverCarPlayOnly(this, it)
+            }
+            choice(card, getString(R.string.microphone_source), listOf(
+                getString(R.string.microphone_source_automatic),
+                getString(R.string.microphone_source_voice),
+                getString(R.string.microphone_source_plain),
+            ), AirPlayPersistence.loadMicrophoneSource(this)) {
+                AirPlayPersistence.saveMicrophoneSource(this, it)
+            }
+            if (!mg4) toggle(card, getString(R.string.contrib_audio_home_toggle_audio_focus), getString(R.string.contrib_audio_home_toggle_audio_focus_desc), AirPlayPersistence.loadAudioFocusEnabled(this)) { AirPlayPersistence.saveAudioFocusEnabled(this, it) }
+            if (!mg4 && resources.getBoolean(R.bool.config_advanced_audio_channel_mapping)) {
                 toggle(card, getString(R.string.advanced_audio_channel_mapping),
                     getString(R.string.use_usage_content_type_routing_instead_of_stream_type),
                     AirPlayPersistence.loadAdvancedAudioChannelMapping(this)) {
                     AirPlayPersistence.saveAdvancedAudioChannelMapping(this, it)
                 }
             }
-            mediaChannelControl(card)
+            if (!mg4) mediaChannelControl(card)
+            // Kept on MG4 until Maps voice prompts are confirmed on the car.
             navigationChannelControl(card)
         }
         section(content, getString(R.string.location), R.drawable.ic_dp_navigation) { card ->
@@ -353,6 +383,12 @@ class DiPlayActivity : ComponentActivity() {
             }
         }
         if (com.shilapi.xcertplay.vehicle.VehicleIntegration.isMg4(this)) section(content, getString(R.string.mg4_vehicle), R.drawable.ic_dp_navigation) { card ->
+            if (Mg4FirmwareProfile.detect().generation == Mg4FirmwareProfile.Generation.SWI165) {
+                toggle(card, getString(R.string.mg4_cluster_directions), getString(R.string.mg4_cluster_directions_description),
+                    AirPlayPersistence.loadClusterDirections(this)) {
+                    AirPlayPersistence.saveClusterDirections(this, it)
+                }
+            }
             toggle(card, getString(R.string.car_battery_for_the_iphone),
                 getString(R.string.mg4_battery_for_the_iphone_description),
                 BydOutputSettings.batteryToIphone(this)) {
@@ -552,7 +588,7 @@ class DiPlayActivity : ComponentActivity() {
         section(content, "${getString(R.string.about_public_preview_prefix)}${version()}") { card ->
             card.addView(label(getString(R.string.an_independent_carplay_receiver_for_android_head_units_wir), 17, TEXT))
         }
-        section(content, getString(R.string.ota_title)) { card ->
+        if (!Mg4FirmwareProfile.detect().isMg4) section(content, getString(R.string.ota_title)) { card ->
             val otaStatus = label(getString(R.string.ota_not_checked), 15, MUTED)
             val otaButton = button(getString(R.string.ota_check), false) { }
             otaButton.setOnClickListener {
@@ -1279,7 +1315,7 @@ class DiPlayActivity : ComponentActivity() {
                     appendLine("Connection: ${if (AirPlayPersistence.loadWirelessEnabled(appContext)) "wireless" else "USB"}")
                     appendLine("Authentication: local experimental beta identity; no remote fallback")
                     appendLine("CarPlay setup: ${if (setupError == null) "ready" else "authentication unavailable"}")
-                    appendLine("Saved video preference (may differ from active session): ${if (AirPlayPersistence.loadHevcEnabled(appContext)) "HEVC" else "H.264"}; ${AirPlayPersistence.loadFps(appContext)} fps")
+                    appendLine("Saved video preference (may differ from active session): ${if (AirPlayPersistence.loadHevcChoice(appContext) ?: Mg4FirmwareProfile.detect().isMg4) "HEVC" else "H.264"}; ${AirPlayPersistence.loadFps(appContext)} fps")
                     appendLine("CarPlay size: ${com.shilapi.xcertplay.airplay.CarPlaySize.fromWidthMillimeters(AirPlayPersistence.loadWidthPhysicalMm(appContext)).label}")
                     appendLine("Saved resolution preference (may differ from active session): ${AirPlayPersistence.loadDisplayScaleTenths(appContext) * 10}%")
                     appendLine("Session: ${if (CarPlayBackgroundSession.active) "active" else if (CarPlayBackgroundSession.hasSession()) "connecting" else "stopped"}")

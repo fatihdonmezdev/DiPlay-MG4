@@ -26,9 +26,9 @@ object AirPlayInfoPlist {
 
     fun build(config: AirPlayConfig): Map<String, Any?> {
         val displays = arrayListOf<Any?>(
-            displayEntry(config.main, STREAM_TYPE_MAIN_SCREEN, MAIN_UUID),
+            displayEntry(config.main, STREAM_TYPE_MAIN_SCREEN, MAIN_UUID, config.viewAreas),
         )
-        config.cluster?.let { displays.add(displayEntry(it, STREAM_TYPE_ALT_SCREEN, ALT_UUID)) }
+        config.cluster?.let { displays.add(displayEntry(it, STREAM_TYPE_ALT_SCREEN, ALT_UUID, config.viewAreas)) }
 
         val info = linkedMapOf<String, Any?>(
             "sourceVersion" to config.sourceVersion,
@@ -154,7 +154,7 @@ object AirPlayInfoPlist {
         )
     }
 
-    private fun displayEntry(display: AirPlayDisplayConfig, type: Int, uuid: String): Map<String, Any?> {
+    private fun displayEntry(display: AirPlayDisplayConfig, type: Int, uuid: String, viewAreas: Boolean = true): Map<String, Any?> {
         val widthPhysical = AirPlayDisplaySettings.sanitizeReportedPhysicalMm(
             display.widthPhysicalMm ?: AirPlayDisplaySettings.DEFAULT_WIDTH_PHYSICAL_MM,
         )
@@ -178,8 +178,11 @@ object AirPlayInfoPlist {
             "primaryInputDevice" to display.primaryInputDevice,
         )
 
-        entry["viewAreas"] = listOf(areaDict(display))
-        entry["initialViewArea"] = 0
+        // SETUP enables "viewAreas" only when this is on, so /info describes them only then.
+        if (viewAreas) {
+            entry["viewAreas"] = listOf(areaDict(display))
+            entry["initialViewArea"] = 0
+        }
         if (display.initialUrl != null) entry["initialURL"] = display.initialUrl
         return entry
     }

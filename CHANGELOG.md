@@ -1,3 +1,77 @@
+# MG4CPlay 0.2.9-mg4.82 (SWI165 fork), 2026-11-01
+
+- **Calls over CarPlay only** is now on by default on MG4 (a saved choice still wins). The mg4.80 log's one call with it off arrived over Wi-Fi, but 0.1 s after it started the car's own Bluetooth phone took audio focus (`focus change=-1`), and the car was still in call mode (`mode=2`) at the next start-up. With hands-free released, the iPhone has only CarPlay to send calls to.
+
+# MG4CPlay 0.2.9-mg4.81 (SWI165 fork), 2026-11-01
+
+- **Calls over CarPlay only:** keep hands-free released for the whole session. mg4.80 released it at handoff (and checked at 2 and 5 s), but the iPhone reconnects it on its own later, and calls then went back to Bluetooth. DiPlay now watches the car's hands-free connection and releases it again each time it reconnects during CarPlay, logging `hands-free reconnected ... releasing again`.
+- Microphone: warm up the software Opus encoder when CarPlay connects. mg4.80 showed the first half-second of each call at 23 ms per 20 ms frame (worst 173 ms) before settling at 5 ms, which added delay at the start of every call and Siri request.
+- Fix the display list (mg4.79) never appearing: the diagnostic privacy filter drops lines containing `name=`.
+- mg4.80 car test: music resend requests now reach the iPhone (the music stream's SETUP carries `controlPort`; call and Siri streams don't). Hands-free release works. Steering-wheel raw codes confirmed: 297 volume up, 298 volume down, 299 previous, 300 next, 3 home.
+
+# MG4CPlay 0.2.9-mg4.80 (SWI165 fork), 2026-11-01
+
+- New **MG4 vehicle > Directions on the dashboard (test)** (SWI165, off by default). Sends CarPlay's next turn, distance, street, remaining distance and time to the instrument cluster's navigation area. Read from the car's own APKs: the cluster takes navigation from `com.saicmotor.adapterservice`, whose exported `MapService` accepts the sat-nav's guidance (`guideStatusChange`, `guideInfosChange`, `roadInfoChange`, `remainingDistanceChange`, `remainingTimesChange`) and relays it to the cluster app and the cluster ECU. CarPlay maneuver types are mapped to the cluster's own turn icons. The stock CarPlay app does not do this on SWI165. Each turn change is logged (`Cluster nav:`).
+
+# MG4CPlay 0.2.9-mg4.79 (SWI165 fork), 2026-11-01
+
+- Log every Android display once per session (id, name, size, density, flags, whether it accepts presentations), to find out whether the SWI165 instrument cluster is an Android display. If it is, CarPlay's own instrument-cluster map could be shown there, as DiPlay already does on BYD.
+
+# MG4CPlay 0.2.9-mg4.78 (SWI165 fork), 2026-11-01
+
+- Steering-wheel keys, from the car's SystemUI (`PhysicalKeysBroadcastReceiver`): SystemUI receives raw key codes (297 volume up, 298 volume down, 299 previous, 300 next, 301 mute, 291 phone, 286 and 17 the custom keys, 288 HVAC, 3 home) and reformats the wheel rocker to KEY_CODE 1 to 5 in the wheel's default mode (6 to 10 and 11 to 15 in its other modes). DiPlay now also logs every raw key (`Wheel raw key:`), so the voice button's code can be identified.
+- With **Calls over CarPlay only** on, a short press of the steering-wheel phone key answers or ends the CarPlay call (CarPlay telephony hook switch).
+
+# MG4CPlay 0.2.9-mg4.77 (SWI165 fork), 2026-11-01
+
+- New **Display and performance > Colour range (test)**: from the video (default), limited (video range) or full (PC range). Whites still look washed out next to USB CarPlay with both HEVC and H.264, so the codec isn't the cause. The likeliest remaining cause is the colour range the car's video plane assumes: limited-range video shown as full range gives grey blacks and dim whites. The choice is passed to the decoder with BT.709 and SDR transfer, and logged on the decoder line (`colourRangeHint=`) next to the decoder's own output colour.
+
+# MG4CPlay 0.2.9-mg4.76 (SWI165 fork), 2026-11-01
+
+- **Efficient video (HEVC)** is back in Display and performance on MG4, still on by default. Whites still look slightly washed out next to USB CarPlay, and the stock AllGo app (read from its APK) decodes H.264 with a plain decoder format, while DiPlay uses HEVC. Turning the switch off sends H.264 like the stock app, to compare. The log's video output line records the colour standard, range and transfer for each.
+
+# MG4CPlay 0.2.9-mg4.75 (SWI165 fork), 2026-11-01
+
+- **Square corners** is now on by default on SWI165 (confirmed on the car in mg4.70) and no longer marked as a test. Other firmware keeps view areas. A saved choice still wins.
+- Video stall watchdog: no keyframe requests while CarPlay is hidden behind another app. mg4.71 logged one every ~10 s in that state, each making the iPhone send a full frame nobody could see. A keyframe is still requested when CarPlay comes back.
+
+# MG4CPlay 0.2.9-mg4.74 (SWI165 fork), 2026-11-01
+
+- Ask the iPhone to resend lost audio packets. The mg4.71 counters showed every resend request was skipped because DiPlay didn't know the iPhone's control port; it now takes it from the audio stream's SETUP when given. The log records the request keys and the port.
+- New **Audio routing > Microphone (test)** choice: Automatic (default: call processing for calls, voice recognition for Siri), call processing for calls and Siri, or the plain microphone. For comparing how well Siri and callers hear you; the microphone line in the log shows the source used.
+- mg4.71 car test (14:01 to 14:16): music, calls and Siri audio arrived almost clean (call and Siri streams lost nothing; music lost a few short bursts). The car's UDP and hotspot counters stayed at zero, so the loss that remains is between the iPhone and the car.
+
+# MG4CPlay 0.2.9-mg4.73 (SWI165 fork), 2026-11-01
+
+- Microphone diagnostics: every 5 s while the microphone runs (calls and Siri), the log records frames sent, audio time against real time, Opus encode time (average and worst), the longest wait for the microphone and the bitrate. If encoding can't keep up on the head unit, the delay grows over a call, and this line shows it.
+- Software Opus encoder effort lowered (complexity 5 to 3) so each 20 ms frame encodes well within real time. mg4.70 testing found the microphone laggy compared with USB CarPlay.
+
+# MG4CPlay 0.2.9-mg4.72 (SWI165 fork), 2026-11-01
+
+- New **Audio routing > Calls over CarPlay only** switch (off by default). With Wi-Fi audio, it also disconnects the car's hands-free (HFP) link to the iPhone after handoff, as factory wireless CarPlay does, so the iPhone can't send calls over Bluetooth. The car's own phone screen and call button don't work while CarPlay runs. DiPlay asks the car to reconnect hands-free when CarPlay closes. Each release and reconnect is logged.
+- Fix the mg4.71 build: the About screen's update section referred to the settings screen's MG4 check.
+
+# MG4CPlay 0.2.9-mg4.71 (SWI165 fork), 2026-11-01
+
+- Diagnostics for audio loss: every 5 s while packets are missing, the log records resend requests sent to the iPhone, packets recovered, whether resends could be sent at all, and the car's own network counters (UDP receive errors and buffer overflows, and `ap0` hotspot drops and errors). This tells Wi-Fi loss in the air apart from loss inside the head unit. mg4.70 lost about 1 in 7 music packets and half the call packets before they reached DiPlay.
+- Settings tidied for MG4. Hidden because the firmware profile sets them: efficient video (HEVC is now always on for MG4), audio focus (Wi-Fi audio takes it; Bluetooth Music must not), advanced audio channel mapping and the music audio channel (MG4 uses the music stream), and in-app updates (they offered upstream builds without this fork's changes). Navigation audio channel stays until Maps prompts are tested.
+- Fix the music buffer labels. They read 300, 500 and 1000 ms but set 500, 750 and 1000 ms. They now read 500 ms, 750 ms (default) and 1000 ms.
+
+# MG4CPlay 0.2.9-mg4.70 (SWI165 fork), 2026-11-01
+
+- Test switch for the rounded black corners the iPhone draws on CarPlay (the stock CarPlay app shows square corners). **Display and performance > Square corners (test)** describes the screen without view areas, the way older factory receivers do. Off by default; the log's video renderer line records `viewAreas=true|false`.
+
+# MG4CPlay 0.2.9-mg4.69 (SWI165 fork), 2026-11-01
+
+- Fix: no CarPlay audio at all in mg4.67 and mg4.68. Those builds stopped offering Opus for the microphone on Android 9, and the iPhone then treated the car as screen-only: CarPlay was not offered as an audio output, so music and calls stayed on Bluetooth while DiPlay had released the car's Bluetooth music. DiPlay offers Opus again.
+- Call microphone on Android 9: Android 9 has no Opus encoder, so DiPlay now encodes the microphone in software with Concentus, a pure-Java Opus encoder. The platform encoder is still used where one exists. The microphone log line shows which (`opus=software` or `opus=platform`).
+
+# MG4CPlay 0.2.9-mg4.68 (SWI165 fork), 2026-11-01
+
+- Calls: the call audio player stalled on every call in mg4.65 and mg4.66. Call audio arrived from the iPhone and the player was set up, but it never logged stats, focus or an error, even when the call ended, so it was stuck before playing anything. Calls and Siri now write to the car's audio output without waiting, so a car output that never starts can no longer hang the stream. Music is unchanged.
+- The diagnostic log now records each step of every audio stream: decoder ready or failed, audio focus requested, kept or not requested, first sound decoded, playback started, the first write error, and a summary when the stream ends. If a stream has not started playing after 6 seconds, the log names the step it is stuck on.
+- AVRCP on SWI165 has no disconnect command. The log now says so instead of reporting `NoSuchMethodException`; AVRCP still drops with the A2DP sink.
+
 # MG4CPlay 0.2.9-mg4.67 (SWI165 fork), 2026-11-01
 
 - Fix the call microphone on Android 9. DiPlay offered Opus for microphone input, so the iPhone chose it for calls, but Android 9 has no Opus encoder and the microphone never started (`Microphone telephony: failed`, codec OPUS, in mg4.66). Opus input is now offered only when the head unit has an Opus encoder; otherwise the iPhone sends plain PCM.

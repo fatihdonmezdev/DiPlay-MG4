@@ -25,6 +25,11 @@ internal data class Mg4FirmwareProfile(
     val preferSurfaceVideo: Boolean,
     /** How music reaches the speakers when the user has not chosen: Wi-Fi on SWI165, hybrid Bluetooth elsewhere. */
     val defaultAudioMode: AudioMode,
+    /**
+     * Describe the screen without view areas, so iOS draws square corners like the stock CarPlay
+     * app. Confirmed on SWI165 (mg4.70, 2026-11-01).
+     */
+    val squareCorners: Boolean = false,
 ) {
     enum class Generation { SWI69, SWI165, OTHER }
 
@@ -59,6 +64,7 @@ internal data class Mg4FirmwareProfile(
                     // Wi-Fi audio played music on this car (mg4.65, 2026-11-01); hybrid Bluetooth
                     // needs the car to switch source and was the less reliable path here.
                     defaultAudioMode = AudioMode.CARPLAY_WIFI,
+                    squareCorners = true,
                 )
                 value.startsWith("SWI69") -> Mg4FirmwareProfile(
                     generation = Generation.SWI69,

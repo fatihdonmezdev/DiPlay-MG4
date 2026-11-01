@@ -53,4 +53,9 @@ data class AirPlayConfig(
     val icons: List<AirPlayIcon> = emptyList(),
     /** iOS 27 video in car (see [VideoInCar]); video plays only while [VideoInCar.allowed]. */
     val videoInCar: Boolean = false,
+    /**
+     * Describe the screen with view areas (newer CarPlay layout). Off sends a plain full-screen
+     * display, as older factory receivers do; a test for the rounded corners iOS draws on SWI165.
+     */
+    val viewAreas: Boolean = true,
 )

@@ -40,6 +40,19 @@ class VideoInCarTest {
     }
 
     @Test
+    fun viewAreasAreDescribedAndEnabledOnlyWhenConfigured() {
+        val withAreas = (AirPlayInfoPlist.build(config)["displays"] as List<*>).first() as Map<*, *>
+        assertTrue(withAreas.containsKey("viewAreas"))
+        assertTrue("viewAreas" in setupEnabledFeatures(config, null))
+
+        val plain = config.copy(viewAreas = false)
+        val withoutAreas = (AirPlayInfoPlist.build(plain)["displays"] as List<*>).first() as Map<*, *>
+        assertFalse(withoutAreas.containsKey("viewAreas"))
+        assertFalse(withoutAreas.containsKey("initialViewArea"))
+        assertFalse("viewAreas" in setupEnabledFeatures(plain, null))
+    }
+
+    @Test
     fun teardownOfAVideoDataStreamKeepsTheIapTunnel() {
         fun body(vararg streams: Map<String, Any?>) = mapOf("streams" to streams.toList())
 

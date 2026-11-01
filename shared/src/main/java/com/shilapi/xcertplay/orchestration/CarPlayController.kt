@@ -153,7 +153,16 @@ class CarPlayController(
     private val locationProvider: Iap2LocationProvider? = null,
     private val vehicleStatusProvider: com.shilapi.xcertplay.transport.VehicleStatusProvider? = null,
     private val audioMode: AudioMode = AudioMode.HYBRID_BLUETOOTH,
+    /**
+     * Wi-Fi audio only: also release the car's hands-free (HFP) link so the iPhone has no
+     * Bluetooth route for calls and keeps them on CarPlay. Reconnected when CarPlay closes.
+     */
+    private val releaseHandsFree: Boolean = false,
+    /** MG4 SWI165: send CarPlay turn-by-turn to the instrument cluster's navigation slot. */
+    private val clusterDirections: Boolean = false,
 ) : Closeable {
+    @Volatile private var handsFreeReleased = false
+
     private val bydOutputsEnabled = !VehicleIntegration.isMg4(context.applicationContext)
 
     init {
@@ -260,6 +269,7 @@ class CarPlayController(
         override fun onSessionActive(session: AirPlaySession) {
             if (activeSession !== session) {
                 if (bydOutputsEnabled) BydNavigationOutputs.start(appContext)
+                if (clusterDirections) com.shilapi.xcertplay.vehicle.Mg4ClusterNavigation.start(appContext) { debugLog(it) }
                 // The gear may have changed since /info.
                 if (videoListener != null) session.setVideoPlaybackAllowed(VideoInCar.allowed)
             }
@@ -275,6 +285,7 @@ class CarPlayController(
             if (activeSession === session) {
                 activeSession = null
                 if (bydOutputsEnabled) BydNavigationOutputs.endNow()
+                if (clusterDirections) com.shilapi.xcertplay.vehicle.Mg4ClusterNavigation.stop(appContext)
                 videoListener?.onVideoSessionEnded()
                 synchronized(playbackStatus) { playbackStatus.clear() }?.let { playing -> playbackListener?.invoke(playing) }
             }
@@ -421,6 +432,18 @@ class CarPlayController(
         }
     }
 
+    /** Sends one CarPlay telephony press (an [com.shilapi.xcertplay.airplay.AirPlayHid] telephony index). */
+    fun sendTelephonyButton(index: Int): Boolean {
+        if (closed) return false
+        val session = activeSession ?: return false
+        return try {
+            touchExecutor.execute { session.sendTelephony(index) }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun sendMediaButton(index: Int): Boolean {
         if (closed) return false
         val session = activeSession ?: return false
@@ -439,6 +462,9 @@ class CarPlayController(
         }
         videoGate?.close()
         restoreBluetoothAfterWirelessCarPlay()
+        stopWatchingHandsFree()
+        reconnectHandsFree()
+        if (clusterDirections) com.shilapi.xcertplay.vehicle.Mg4ClusterNavigation.stop(appContext)
         if (bydOutputsEnabled) {
             BydNavigationOutputs.endNow()
             BydNavigationOutputs.clearClusterStreamControl(::applyClusterUi)
@@ -516,6 +542,7 @@ class CarPlayController(
     // HUD (SOME/IP) and cluster (AMap broadcast) keep separate state so one failing cannot stall the other.
     private fun onRouteFrame(frame: com.shilapi.xcertplay.iap2.wire.Iap2Frame) {
         if (bydOutputsEnabled) BydNavigationOutputs.onFrame(frame)
+        if (clusterDirections) com.shilapi.xcertplay.vehicle.Mg4ClusterNavigation.onFrame(frame)
         synchronized(playbackStatus) { playbackStatus.accept(frame) }?.let { playing -> playbackListener?.invoke(playing) }
     }
 
@@ -2048,11 +2075,74 @@ class CarPlayController(
                 if (closed || phase != Phase.WIRELESS) return@Thread
                 releaseBluetoothProfile(adapter, device, BLUETOOTH_PROFILE_A2DP_SINK, "A2DP sink", index + 1)
                 releaseBluetoothProfile(adapter, device, BLUETOOTH_PROFILE_AVRCP_CONTROLLER, "AVRCP", index + 1)
+                if (releaseHandsFree) {
+                    handsFreeReleased = true
+                    releaseBluetoothProfile(adapter, device, BLUETOOTH_PROFILE_HEADSET_CLIENT, "Hands-free", index + 1)
+                }
             }, "car-bt-music-release-${index + 1}").apply {
                 isDaemon = true
                 start()
             }
         }
+        if (releaseHandsFree) watchHandsFree(adapter, device)
+    }
+
+    @Volatile private var handsFreeWatcher: android.content.BroadcastReceiver? = null
+    private var handsFreeRereleases = 0
+
+    /**
+     * The iPhone reconnects the car's hands-free on its own a little after it was released (the
+     * three releases above only cover the first five seconds). While calls are CarPlay-only,
+     * release it again whenever it reconnects during this session, and log each time.
+     */
+    private fun watchHandsFree(adapter: BluetoothAdapter, device: BluetoothDevice) {
+        if (handsFreeWatcher != null) return
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context, intent: Intent) {
+                val changed = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1)
+                if (changed?.address != device.address) return
+                if (state != BluetoothProfile.STATE_CONNECTED && state != BluetoothProfile.STATE_CONNECTING) return
+                if (closed || phase != Phase.WIRELESS) return
+                handsFreeRereleases++
+                debugLog("car Bluetooth: hands-free reconnected (state=$state); releasing again #$handsFreeRereleases")
+                releaseBluetoothProfile(adapter, device, BLUETOOTH_PROFILE_HEADSET_CLIENT, "Hands-free", 100 + handsFreeRereleases)
+            }
+        }
+        runCatching {
+            appContext.registerReceiver(receiver, android.content.IntentFilter(ACTION_HEADSET_CLIENT_STATE))
+            handsFreeWatcher = receiver
+        }.onFailure { debugLog("car Bluetooth: hands-free watcher failed: ${it.javaClass.simpleName}") }
+    }
+
+    private fun stopWatchingHandsFree() {
+        handsFreeWatcher?.let { receiver -> runCatching { appContext.unregisterReceiver(receiver) } }
+        handsFreeWatcher = null
+    }
+
+    /** Gives the car its hands-free link back after a CarPlay-only calls session. */
+    private fun reconnectHandsFree() {
+        if (!handsFreeReleased) return
+        handsFreeReleased = false
+        if (Build.VERSION.SDK_INT != Build.VERSION_CODES.P) return
+        val adapter = bluetoothAdapter ?: return
+        val device = wirelessBluetoothDevice ?: return
+        val listener = object : BluetoothProfile.ServiceListener {
+            override fun onServiceConnected(profileId: Int, proxy: BluetoothProfile) {
+                try {
+                    val connect = proxy.javaClass.getMethod("connect", BluetoothDevice::class.java)
+                    val result = connect.invoke(proxy, device) as? Boolean
+                    debugLog("car Bluetooth: hands-free reconnect requested result=$result")
+                } catch (error: Throwable) {
+                    debugLog("car Bluetooth: hands-free reconnect failed: ${error.javaClass.simpleName}")
+                } finally {
+                    adapter.closeProfileProxy(profileId, proxy)
+                }
+            }
+
+            override fun onServiceDisconnected(profileId: Int) = Unit
+        }
+        runCatching { adapter.getProfileProxy(appContext, listener, BLUETOOTH_PROFILE_HEADSET_CLIENT) }
     }
 
     private fun releaseBluetoothProfile(
@@ -2076,6 +2166,9 @@ class CarPlayController(
                     val disconnect = proxy.javaClass.getMethod("disconnect", BluetoothDevice::class.java)
                     val result = disconnect.invoke(proxy, device) as? Boolean
                     debugLog("car Bluetooth music: $name release attempt=$attempt result=$result")
+                } catch (_: NoSuchMethodException) {
+                    // SWI165's AVRCP controller has no disconnect; it drops with the A2DP sink.
+                    debugLog("car Bluetooth music: $name has no disconnect on this firmware; follows A2DP sink attempt=$attempt")
                 } catch (error: Throwable) {
                     debugLog("car Bluetooth music: $name release failed attempt=$attempt: ${error.javaClass.simpleName}")
                 } finally {
@@ -2403,6 +2496,11 @@ class CarPlayController(
         private const val WIRELESS_HANDOFF_TIMEOUT_MILLIS = 45_000L
         private const val RFCOMM_CONNECT_TIMEOUT_MILLIS = 15_000L
         private const val BLUETOOTH_PROFILE_AVRCP_CONTROLLER = 12
+        // BluetoothProfile.HEADSET_CLIENT (hidden): the head unit's hands-free side.
+        private const val BLUETOOTH_PROFILE_HEADSET_CLIENT = 16
+        // BluetoothHeadsetClient.ACTION_CONNECTION_STATE_CHANGED (hidden).
+        private const val ACTION_HEADSET_CLIENT_STATE =
+            "android.bluetooth.headsetclient.profile.action.CONNECTION_STATE_CHANGED"
 
         /** Hidden `BluetoothProfile.A2DP_SINK` on Android 9: the role a head unit plays. */
         private const val BLUETOOTH_PROFILE_A2DP_SINK = 11

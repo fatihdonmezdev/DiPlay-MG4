@@ -50,6 +50,19 @@ internal object CarPlayMediaKeys {
     private const val HARD_KEY_NEXT = 5
 
     /**
+     * The raw wheel and panel keys SystemUI receives before reformatting them, read from
+     * SystemUI_eh32_aus_local_P (`PhysicalKeysBroadcastReceiver`). Raw codes: 297 volume up,
+     * 298 volume down, 299 previous, 300 next, 301 mute (reformatted to KEY_CODE 1 to 5 in the
+     * wheel's default mode), 291 phone key, 286 and 17 the custom (star) keys, 288 the HVAC key,
+     * 3 home. Logged so the voice key's code can be found; the phone key answers or ends a CarPlay
+     * call when calls are CarPlay-only.
+     */
+    private const val ACTION_RAW_HARD_KEY = "com.saic.keyevent.hardkey.report"
+    private const val RAW_PHONE_KEY = 291
+    private var rawKeyReceiver: BroadcastReceiver? = null
+    private var callsOverCarPlay = false
+
+    /**
      * @param wifiAudio CarPlay music plays through DiPlay (Wi-Fi audio). The car's Bluetooth
      * player no longer receives the wheel keys, so DiPlay listens for the MG4 hard-key broadcast.
      */
@@ -58,13 +71,19 @@ internal object CarPlayMediaKeys {
         context: Context,
         next: CarPlayController,
         wifiAudio: Boolean = false,
+        /** Hands-free is released, so the phone key should drive the CarPlay call. */
+        callsOnCarPlay: Boolean = false,
         log: (String) -> Unit = {},
     ) {
         if (controller !== next) releaseLocked()
         appContext = context.applicationContext
         controller = next
         report = log
-        if (wifiAudio && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) registerHardKeysLocked()
+        callsOverCarPlay = callsOnCarPlay
+        if (wifiAudio && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            registerHardKeysLocked()
+            registerRawKeysLocked()
+        }
         // AUTUS/SAIC's Android 9 Bluetooth stack treats even an active MediaSession (without an
         // audio-focus request) as the current AVRCP player.  Registering it while the same phone
         // is the wireless CarPlay source makes the factory stack send pause back to the iPhone.
@@ -161,6 +180,34 @@ internal object CarPlayMediaKeys {
         }
     }
 
+    private fun registerRawKeysLocked() {
+        if (rawKeyReceiver != null) return
+        val context = appContext ?: return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) = onRawKey(intent)
+        }
+        runCatching { context.registerReceiver(receiver, IntentFilter(ACTION_RAW_HARD_KEY)) }
+            .onSuccess { rawKeyReceiver = receiver }
+            .onFailure { report("Wheel keys: raw-key receiver failed: ${it.javaClass.simpleName}") }
+    }
+
+    private fun onRawKey(intent: Intent) {
+        val code = intent.getIntExtra("android.intent.extra.hardkey.keycode", -1)
+        val down = intent.getBooleanExtra("android.intent.extra.hardkey.down", false)
+        val longPress = intent.getBooleanExtra("android.intent.extra.hardkey.longpress", false)
+        // Phone key, short press, on release: CarPlay hook switch (answers a ringing call or ends
+        // the current one). Only when hands-free is released, or the car's own phone acts as well.
+        val act = code == RAW_PHONE_KEY && !down && !longPress && callsOverCarPlay
+        report("Wheel raw key: code=$code down=$down long=$longPress${if (act) " -> CarPlay call" else ""}")
+        if (act) {
+            val sent = synchronized(this) { controller }?.sendTelephonyButton(TELEPHONY_HOOK_SWITCH) ?: false
+            Log.i(TAG, "phone key -> CarPlay hook switch sent=$sent")
+        }
+    }
+
+    // Index into AirPlayHid's telephony report: usage 0x20, Hook Switch.
+    private const val TELEPHONY_HOOK_SWITCH = 1
+
     private fun onHardKey(intent: Intent) {
         val keyCode = intent.getIntExtra("KEY_CODE", -1)
         val down = intent.getBooleanExtra("DOWN", false)
@@ -179,6 +226,8 @@ internal object CarPlayMediaKeys {
     private fun releaseLocked() {
         hardKeyReceiver?.let { receiver -> runCatching { appContext?.unregisterReceiver(receiver) } }
         hardKeyReceiver = null
+        rawKeyReceiver?.let { receiver -> runCatching { appContext?.unregisterReceiver(receiver) } }
+        rawKeyReceiver = null
         session?.let {
             it.isActive = false
             it.release()

@@ -215,6 +215,20 @@
     <string name="hevc_h_265_video_transport">HEVC H.265 video transport</string>
     <string name="hevc_software_decoder">HEVC software decoder</string>
     <string name="overlay_video_renderer">Overlay video renderer</string>
+    <string name="microphone_source">Microphone (test)</string>
+    <string name="microphone_source_automatic">Automatic · default</string>
+    <string name="microphone_source_voice">Call processing for calls and Siri</string>
+    <string name="microphone_source_plain">Plain microphone</string>
+    <string name="mg4_cluster_directions">Directions on the dashboard (test)</string>
+    <string name="mg4_cluster_directions_description">Shows CarPlay’s next turn, distance and street in the instrument cluster’s navigation area, the way the car’s own sat-nav does. Applies next time CarPlay connects.</string>
+    <string name="calls_over_carplay_only">Calls over CarPlay only</string>
+    <string name="calls_over_carplay_only_description">With CarPlay audio over Wi-Fi, also disconnects the car’s hands-free Bluetooth while CarPlay runs, so the iPhone keeps calls on CarPlay. The car’s own phone screen and call button don’t work during that time. Hands-free reconnects when CarPlay closes. On by default on MG4. Applies next time CarPlay connects.</string>
+    <string name="video_colour_range">Colour range (test)</string>
+    <string name="video_colour_range_stream">From the video · default</string>
+    <string name="video_colour_range_limited">Limited (video range)</string>
+    <string name="video_colour_range_full">Full (PC range)</string>
+    <string name="plain_display_area">Square corners</string>
+    <string name="plain_display_area_description">Describes the screen to the iPhone the way the car’s own CarPlay app does, without view areas. Try it if CarPlay shows rounded black corners. Turn off if the picture is cropped or misplaced. Applies next time CarPlay opens.</string>
     <string name="overlay_video_renderer_description">Draws CarPlay on the display’s video overlay, like the car’s own CarPlay app. Turn off if the picture flickers or stays black. Applies next time CarPlay opens.</string>
     <string name="carplay_wifi_audio">CarPlay audio over Wi-Fi</string>
     <string name="carplay_wifi_audio_description">Plays music and calls through DiPlay over Wi-Fi, and disconnects the car’s Bluetooth music from your iPhone while CarPlay runs. Hands-free calling stays connected. Off uses the car’s Bluetooth Music instead. Applies when CarPlay reconnects.</string>
@@ -326,6 +340,8 @@
     <string name="right_hand_drive">Right-hand drive</string>
     <string name="running">Running</string>
     <string name="s_0_3x">0.3x</string>
+    <string name="music_buffer_500">500 ms</string>
+    <string name="music_buffer_750_default">750 ms · default</string>
     <string name="s_1000_ms_most_stable">1000 ms · most stable</string>
     <string name="s_1_0x">1.0x</string>
     <string name="s_1_choose_your_connection">1 · Choose your connection</string>
@@ -393,6 +409,7 @@
     <string name="usb_ch341">USB/CH341</string>
     <string name="use_a_usb_data_cable_and_the_car_s_usb_data_port_unlock_yo">Use a USB data cable and the car’s USB data port. Unlock your iPhone and allow CarPlay. No hotspot setup is needed.</string>
     <string name="use_a_usb_data_cable_and_unlock_your_iphone_allow_trust_an">Use a USB data cable and unlock your iPhone.\nAllow Trust and CarPlay if your iPhone asks.</string>
+    <string name="efficient_video_mg4_description">HEVC uses about half the Wi-Fi data. The car’s own CarPlay app uses H.264; turn off to compare colours and whites. Applies next time CarPlay connects.</string>
     <string name="use_hevc_leave_off_for_the_widest_head_unit_compatibility">Use HEVC. Leave off for the widest head-unit compatibility.</string>
     <string name="use_software_hevc_decoder">Use software HEVC decoder</string>
     <string name="use_usage_content_type_routing_instead_of_stream_type">Use usage / content-type routing instead of stream type</string>

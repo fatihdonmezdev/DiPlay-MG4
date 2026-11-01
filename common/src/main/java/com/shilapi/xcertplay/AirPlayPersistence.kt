@@ -40,6 +40,11 @@ object AirPlayPersistence {
     private const val KEY_HEVC_ENABLED = "hevc_enabled"
     private const val KEY_HEVC_SOFTWARE_DECODER = "hevc_software_decoder"
     private const val KEY_SURFACE_VIDEO = "surface_video_renderer"
+    private const val KEY_PLAIN_DISPLAY = "plain_display_area"
+    private const val KEY_CALLS_CARPLAY_ONLY = "calls_over_carplay_only"
+    private const val KEY_MIC_SOURCE = "microphone_source"
+    private const val KEY_VIDEO_COLOUR_RANGE = "video_colour_range"
+    private const val KEY_CLUSTER_DIRECTIONS = "mg4_cluster_directions"
     private const val KEY_AUDIO_MODE = "audio_mode"
     private const val KEY_ADVANCED_AUDIO_CHANNEL_MAPPING = "advanced_audio_channel_mapping"
     private const val KEY_AUDIO_FOCUS_ENABLED = "audio_focus_enabled"
@@ -103,6 +108,12 @@ object AirPlayPersistence {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(KEY_HEVC_ENABLED, false)
 
+    /** The saved HEVC choice, or null when the user hasn't picked (MG4 then defaults to HEVC). */
+    fun loadHevcChoice(context: Context): Boolean? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return if (prefs.contains(KEY_HEVC_ENABLED)) prefs.getBoolean(KEY_HEVC_ENABLED, false) else null
+    }
+
     fun loadUiScalePercent(context: Context): Int = CarPlayUiScale.sanitize(
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getInt(KEY_UI_SCALE_PERCENT, CarPlayUiScale.DEFAULT),
@@ -138,6 +149,71 @@ object AirPlayPersistence {
     fun saveSurfaceVideoRenderer(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putBoolean(KEY_SURFACE_VIDEO, enabled)
+            .apply()
+    }
+
+    /** SWI165: send CarPlay turn-by-turn to the instrument cluster's navigation slot. */
+    fun loadClusterDirections(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_CLUSTER_DIRECTIONS, false)
+
+    fun saveClusterDirections(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_CLUSTER_DIRECTIONS, enabled)
+            .apply()
+    }
+
+    /** 0 from the stream, 1 limited (video) range, 2 full range. */
+    fun loadVideoColourRange(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_VIDEO_COLOUR_RANGE, 0).takeIf { it in 0..2 } ?: 0
+
+    fun saveVideoColourRange(context: Context, choice: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_VIDEO_COLOUR_RANGE, choice)
+            .apply()
+    }
+
+    /** 0 automatic, 1 voice call processing for everything, 2 plain microphone. */
+    fun loadMicrophoneSource(context: Context): Int =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_MIC_SOURCE, 0).takeIf { it in 0..2 } ?: 0
+
+    fun saveMicrophoneSource(context: Context, choice: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_MIC_SOURCE, choice)
+            .apply()
+    }
+
+    /**
+     * Wi-Fi audio: release the car's hands-free link while CarPlay runs, so calls stay on CarPlay.
+     * On by default on MG4: with hands-free connected, the car's own phone takes audio focus as soon
+     * as a CarPlay call starts (mg4.80 log). A saved choice wins.
+     */
+    fun loadCallsOverCarPlayOnly(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return if (prefs.contains(KEY_CALLS_CARPLAY_ONLY)) {
+            prefs.getBoolean(KEY_CALLS_CARPLAY_ONLY, false)
+        } else {
+            Mg4FirmwareProfile.detect().isMg4
+        }
+    }
+
+    fun saveCallsOverCarPlayOnly(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_CALLS_CARPLAY_ONLY, enabled)
+            .apply()
+    }
+
+    /**
+     * True sends a plain full-screen display without view areas (square corners). Null until the
+     * user picks; callers then use the firmware profile's default.
+     */
+    fun loadPlainDisplayArea(context: Context): Boolean? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return if (prefs.contains(KEY_PLAIN_DISPLAY)) prefs.getBoolean(KEY_PLAIN_DISPLAY, false) else null
+    }
+
+    fun savePlainDisplayArea(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_PLAIN_DISPLAY, enabled)
             .apply()
     }
 

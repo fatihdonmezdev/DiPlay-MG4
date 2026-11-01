@@ -47,4 +47,12 @@ class Mg4FirmwareProfileTest {
             assertEquals(AudioMode.HYBRID_BLUETOOTH, Mg4FirmwareProfile.forFirmware(firmware).defaultAudioMode)
         }
     }
+
+    @Test
+    fun onlySwi165DefaultsToSquareCorners() {
+        assertEquals(true, Mg4FirmwareProfile.forFirmware("SWI165-29176-1100R11").squareCorners)
+        for (firmware in listOf("SWI69-12345-1000R01", null, "BYD-DiLink")) {
+            assertEquals(false, Mg4FirmwareProfile.forFirmware(firmware).squareCorners)
+        }
+    }
 }

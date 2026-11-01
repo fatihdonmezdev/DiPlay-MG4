@@ -22,7 +22,26 @@ import java.util.concurrent.atomic.AtomicBoolean
  * The recorder runs only while the matching audio stream is active, so callers start this after
  * the first downlink audio packet and close it on stream teardown.
  */
-internal class MicrophoneUplink(private val config: MicrophoneConfig) : Closeable {
+/**
+ * Test override for which car microphone path calls and Siri use (an Android AudioSource), or null
+ * for the default per stream (call processing for calls, voice recognition for Siri). Set by the
+ * host from settings before CarPlay starts.
+ */
+object MicrophoneSource {
+    @Volatile var override: Int? = null
+}
+
+internal class MicrophoneUplink(
+    private val config: MicrophoneConfig,
+    private val report: (String) -> Unit = {},
+) : Closeable {
+    // Diagnostics, every 5 s: whether capture and encoding keep up with real time.
+    private var statsStartNs = 0L
+    private var framesSent = 0
+    private var encodeTotalNs = 0L
+    private var encodeMaxNs = 0L
+    private var readMaxNs = 0L
+    private var bytesSent = 0L
     private val running = AtomicBoolean(false)
     private val firstPacketLogged = AtomicBoolean(false)
     @Volatile private var recorder: AudioRecord? = null
@@ -49,7 +68,7 @@ internal class MicrophoneUplink(private val config: MicrophoneConfig) : Closeabl
             return false
         }
 
-        val source = when (config.audioType) {
+        val source = MicrophoneSource.override ?: when (config.audioType) {
             "telephony" -> MediaRecorder.AudioSource.VOICE_COMMUNICATION
             "speechrecognition" -> MediaRecorder.AudioSource.VOICE_RECOGNITION
             else -> MediaRecorder.AudioSource.MIC
@@ -72,6 +91,7 @@ internal class MicrophoneUplink(private val config: MicrophoneConfig) : Closeabl
                 createRecorder(MediaRecorder.AudioSource.MIC, channelMask, bufferSize)
                     ?.also { sourceUsed = "${sourceName(source)} refused, MIC" }
             } else null
+        if (nextEncoder != null) sourceUsed = "$sourceUsed opus=${nextEncoder.kind}"
         if (nextRecorder == null) {
             sourceUsed = "none (${sourceName(source)} and MIC refused)"
             nextEncoder?.close()
@@ -158,7 +178,9 @@ internal class MicrophoneUplink(private val config: MicrophoneConfig) : Closeabl
         var filled = 0
         try {
             while (running.get()) {
+                val readStarted = System.nanoTime()
                 val count = recorder.read(readBuffer, 0, readBuffer.size, AudioRecord.READ_BLOCKING)
+                readMaxNs = maxOf(readMaxNs, System.nanoTime() - readStarted)
                 if (count < 0) {
                     if (running.get()) Log.e(TAG, "microphone read failed code=$count")
                     return
@@ -181,17 +203,51 @@ internal class MicrophoneUplink(private val config: MicrophoneConfig) : Closeabl
         } catch (error: Exception) {
             if (running.get()) Log.e(TAG, "microphone capture failed", error)
         } finally {
+            reportStats(force = true)
             running.set(false)
             release()
         }
     }
 
+    private fun reportStats(force: Boolean = false) {
+        val now = System.nanoTime()
+        if (statsStartNs == 0L) statsStartNs = now
+        val elapsedNs = now - statsStartNs
+        if (!force && elapsedNs < STATS_WINDOW_NS) return
+        if (framesSent > 0 || force) {
+            val frameMs = config.frameBytes * 1000L / (config.sampleRate * config.channels * 2).coerceAtLeast(1)
+            runCatching {
+                report(
+                    "Microphone ${config.audioType} stats codec=${config.codec} frames=$framesSent " +
+                        "audioMs=${framesSent * frameMs} wallMs=${elapsedNs / 1_000_000L} " +
+                        "encodeAvgUs=${if (framesSent > 0) encodeTotalNs / framesSent / 1000 else 0} " +
+                        "encodeMaxUs=${encodeMaxNs / 1000} readMaxMs=${readMaxNs / 1_000_000L} " +
+                        "kbps=${if (elapsedNs > 0) bytesSent * 8_000_000L / elapsedNs else 0}" +
+                        if (force) " ended=true" else "",
+                )
+            }
+        }
+        statsStartNs = now
+        framesSent = 0
+        encodeTotalNs = 0L
+        encodeMaxNs = 0L
+        readMaxNs = 0L
+        bytesSent = 0L
+    }
+
     private fun sendFrame(socket: DatagramSocket, counters: MicrophoneCounters, frame: ByteArray) {
+        val encodeStarted = System.nanoTime()
         val bodies = if (config.codec == AudioCodecKind.OPUS) {
             opusEncoder?.encode(frame).orEmpty()
         } else {
             listOf(MicrophonePacketizer.toWirePcm(frame))
         }
+        val encodeNs = System.nanoTime() - encodeStarted
+        encodeTotalNs += encodeNs
+        encodeMaxNs = maxOf(encodeMaxNs, encodeNs)
+        framesSent++
+        bodies.forEach { bytesSent += it.size }
+        reportStats()
         bodies.forEach { body ->
             sendPacket(
                 socket = socket,
@@ -279,8 +335,9 @@ internal class MicrophoneUplink(private val config: MicrophoneConfig) : Closeabl
     }
 
     private companion object {
-        const val TAG = "xcertplay-usb"
-        const val MIN_READ_BYTES = 2_048
-        const val CLOSE_JOIN_MILLIS = 500L
+        private const val TAG = "xcertplay-usb"
+        private const val MIN_READ_BYTES = 2_048
+        private const val CLOSE_JOIN_MILLIS = 500L
+        private const val STATS_WINDOW_NS = 5_000_000_000L
     }
 }

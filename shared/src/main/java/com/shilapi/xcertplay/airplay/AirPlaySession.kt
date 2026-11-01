@@ -771,7 +771,7 @@ internal fun setupEnabledFeatures(config: AirPlayConfig, proposed: List<*>?): Li
     val features = mutableListOf<String>()
     if (config.hevc) features.add("hevc")
     features.add("iAPChannel")
-    features.add("viewAreas")
+    if (config.viewAreas) features.add("viewAreas")
     if (config.cluster != null) features.add("altScreen")
     if (config.videoInCar && proposed.orEmpty().contains(VideoInCar.FEATURE)) features.add(VideoInCar.FEATURE)
     return features

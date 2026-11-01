@@ -477,12 +477,15 @@ class CarPlayHostActivity : ComponentActivity() {
         displayScaleTenths = AirPlayPersistence.loadDisplayScaleTenths(this)
         // Size is now chosen only through CarPlaySize; ignore the canvas scale older builds stored.
         uiScalePercent = CarPlayUiScale.DEFAULT
-        hevcEnabled = AirPlayPersistence.loadHevcEnabled(this)
+        val mg4 = Mg4FirmwareProfile.detect().isMg4
+        // MG4 defaults to HEVC (half the Wi-Fi data). The stock SWI165 CarPlay app uses H.264,
+        // so the switch stays available to compare picture colour.
+        hevcEnabled = AirPlayPersistence.loadHevcChoice(this) ?: mg4
         hevcSoftwareDecoderEnabled =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
                 AirPlayPersistence.loadHevcSoftwareDecoderEnabled(this)
         advancedAudioChannelMapping =
-            advancedAudioChannelMappingSupported &&
+            !Mg4FirmwareProfile.detect().isMg4 && advancedAudioChannelMappingSupported &&
                 AirPlayPersistence.loadAdvancedAudioChannelMapping(this)
         navigationStreamType = AirPlayPersistence.loadNavigationStreamType(this)
         debugLogsEnabled = AirPlayPersistence.loadDebugLogsEnabled(this)
@@ -616,7 +619,7 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         wirelessPermissionsReady = !wirelessEnabled || hasRequiredWirelessPermissions()
         advancedAudioChannelMapping =
-            advancedAudioChannelMappingSupported &&
+            !Mg4FirmwareProfile.detect().isMg4 && advancedAudioChannelMappingSupported &&
                 AirPlayPersistence.loadAdvancedAudioChannelMapping(this)
         if (DiLink51ClusterLayout.automatic(this) && clusterMonitor == null) {
             clusterMonitor = DiLink51ClusterMonitor(this, ::onClusterActivityState).also { it.start() }
@@ -828,7 +831,8 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         appendLog(
             "Video renderer ${if (surfaceVideo) "SurfaceView" else "TextureView"} " +
-                "firmware=${firmware.firmware ?: "unknown"} profile=${firmware.generation}",
+                "firmware=${firmware.firmware ?: "unknown"} profile=${firmware.generation} " +
+                "viewAreas=${!(AirPlayPersistence.loadPlainDisplayArea(this) ?: firmware.squareCorners)}",
         )
         val gestureLayer = View(this).apply {
             isClickable = true
@@ -2836,7 +2840,10 @@ class CarPlayHostActivity : ComponentActivity() {
             rightHandDrive = rightHandDrive,
             hevc = hevcEnabled,
             microphone = microphoneAvailable,
-            microphoneOpus = com.shilapi.xcertplay.media.OpusSupport.encoderAvailable(),
+            // Always offer Opus input: wireless iPhones treat the car as screen-only without it
+            // (mg4.67 lost all CarPlay audio). Android 9 encodes it in software (Concentus).
+            microphoneOpus = true,
+            viewAreas = !(AirPlayPersistence.loadPlainDisplayArea(this) ?: Mg4FirmwareProfile.detect().squareCorners),
             manufacturer = normalizedManufacturer(),
             model = normalizedModel(),
             oemLabel = oemLabel,
@@ -3020,10 +3027,16 @@ class CarPlayHostActivity : ComponentActivity() {
             videoWidth = videoWidth,
             videoHeight = videoHeight,
             preferSoftwareHevcDecoder = hevcSoftwareDecoderEnabled,
+            videoColorRange = when (AirPlayPersistence.loadVideoColourRange(this)) {
+                1 -> android.media.MediaFormat.COLOR_RANGE_LIMITED
+                2 -> android.media.MediaFormat.COLOR_RANGE_FULL
+                else -> 0
+            },
             advancedAudioChannelMapping = advancedAudioChannelMapping,
-            audioFocusEnabled = AirPlayPersistence.loadAudioFocusEnabled(this),
+            // MG4: Wi-Fi audio takes focus itself; Bluetooth Music must leave it to the car.
+            audioFocusEnabled = !Mg4FirmwareProfile.detect().isMg4 && AirPlayPersistence.loadAudioFocusEnabled(this),
             audioMode = sessionAudioMode,
-            mediaChannel = AirPlayPersistence.loadMediaAudioChannel(this),
+            mediaChannel = if (Mg4FirmwareProfile.detect().isMg4) 0 else AirPlayPersistence.loadMediaAudioChannel(this),
             navigationChannel = AirPlayPersistence.loadNavigationAudioChannel(this),
             context = this,
             navigationStreamType = navigationStreamType,
@@ -3252,10 +3265,27 @@ class CarPlayHostActivity : ComponentActivity() {
                 null
             },
             audioMode = sessionAudioMode,
+            releaseHandsFree = run {
+                com.shilapi.xcertplay.media.MicrophoneSource.override =
+                    when (AirPlayPersistence.loadMicrophoneSource(this)) {
+                        1 -> android.media.MediaRecorder.AudioSource.VOICE_COMMUNICATION
+                        2 -> android.media.MediaRecorder.AudioSource.MIC
+                        else -> null
+                    }
+                sessionAudioMode == com.shilapi.xcertplay.media.AudioMode.CARPLAY_WIFI
+            } &&
+                AirPlayPersistence.loadCallsOverCarPlayOnly(this),
+            clusterDirections = Mg4FirmwareProfile.detect().generation == Mg4FirmwareProfile.Generation.SWI165 &&
+                AirPlayPersistence.loadClusterDirections(this),
         )
         controller = next
         armStartupWatchdog()
-        CarPlayMediaKeys.attach(this, next, sessionAudioMode == AudioMode.CARPLAY_WIFI) { appendLog(it) }
+        CarPlayMediaKeys.attach(
+            this,
+            next,
+            sessionAudioMode == AudioMode.CARPLAY_WIFI,
+            callsOnCarPlay = sessionAudioMode == AudioMode.CARPLAY_WIFI && AirPlayPersistence.loadCallsOverCarPlayOnly(this),
+        ) { appendLog(it) }
         if (airPlayConfig.videoInCar) CarPlayVideo.attach(this, next)
         CarPlayBackgroundSession.store(next, renderer, size.width, size.height, this) { completion ->
             runOnUiThread {
@@ -3303,6 +3333,28 @@ class CarPlayHostActivity : ComponentActivity() {
         mainHandler.postDelayed(applyDisplaySize, DISPLAY_CHANGE_DEBOUNCE_MILLIS)
     }
 
+    /**
+     * Every display Android knows about, once per session. The SWI165 cluster app renders onto
+     * the instrument cluster ("startClusterActivity"); if the cluster is an Android display here,
+     * CarPlay's own instrument-cluster map (altScreen) could be shown on it.
+     */
+    private fun logAllDisplays() {
+        runCatching {
+            val manager = getSystemService(android.hardware.display.DisplayManager::class.java) ?: return
+            val presentation = manager.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
+                .map { it.displayId }.toSet()
+            manager.displays.forEach { display ->
+                val metrics = android.util.DisplayMetrics().also { display.getRealMetrics(it) }
+                // appendFileLog: the privacy filter drops any line containing "name=".
+                appendFileLog(
+                    "Display id=${display.displayId} label=\"${display.name}\" size=${metrics.widthPixels}x${metrics.heightPixels} " +
+                        "dpi=${metrics.densityDpi} flags=0x${Integer.toHexString(display.flags)} " +
+                        "state=${display.state} presentation=${display.displayId in presentation}",
+                )
+            }
+        }.onFailure { appendLog("Display list failed: ${it.javaClass.simpleName}") }
+    }
+
     private fun applyDisplaySize(size: DisplaySize) {
         if (shuttingDown.get() || size == activeDisplaySize) return
         val previous = activeDisplaySize
@@ -3311,6 +3363,7 @@ class CarPlayHostActivity : ComponentActivity() {
         updateResolutionMenu()
         if (previous == null) {
             appendLog("Display detected: ${size.width}x${size.height}")
+            logAllDisplays()
             maybeStartCarPlay()
         } else if (menuOpen || handshakeResetInProgress) {
             appendLog(
@@ -3420,7 +3473,10 @@ class CarPlayHostActivity : ComponentActivity() {
             if (shuttingDown.get() || activeAirPlaySession == null || !wirelessEnabled || menuOpen) return
             val now = android.os.SystemClock.elapsedRealtime()
             val lastFrame = sink?.lastVideoFrameReceivedMillis(SCREEN_TYPE_MAIN)
-            if (SCREEN_TYPE_MAIN in activeScreenStreamTypes && lastFrame != null &&
+            // CarPlay hidden: no picture to recover, and each keyframe request makes the iPhone
+            // send a full frame (mg4.71 logged one every ~10 s while CarPlay sat behind the
+            // launcher). A new keyframe is requested when the surface comes back anyway.
+            if (SCREEN_TYPE_MAIN in activeScreenStreamTypes && lastFrame != null && currentSurface != null &&
                 now - lastFrame >= VIDEO_STALL_RECOVERY_MILLIS
             ) {
                 if (videoStallRecoveryAt == 0L) {
