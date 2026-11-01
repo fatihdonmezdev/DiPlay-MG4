@@ -5,7 +5,7 @@ Wireless CarPlay for the MG4 head unit. This is a personal fork of
 for an Australian **MG4 on SWI165 firmware** (`SWI165-29176-1100R11`, Android 9,
 AUTUS SAIC MT2712, 1920x720 panel). Upstream is tested on SWI69.
 
-Current build: **0.2.9-mg4.82**. Car-test builds install as
+Current build: **0.2.9-mg4.83**. Car-test builds install as
 `com.shihab.diplay.hudtest`, alongside any upstream `com.shihab.diplay` install.
 Run one at a time.
 
@@ -30,7 +30,7 @@ The full test record is in [docs/MG4_SWI165.md](docs/MG4_SWI165.md).
 |---|---|
 | Firmware profile | Reads `ro.build.mt2712.version` at start-up and applies SWI69 or SWI165 settings. Unknown firmware keeps upstream behaviour. |
 | Video | SWI165 draws CarPlay on the hardware video overlay (`SurfaceView`), like the stock AllGo CarPlay app. |
-| Audio | SWI165 plays CarPlay music and calls over Wi-Fi through DiPlay. Once CarPlay is up, the car's Bluetooth music link to the iPhone is disconnected; hands-free stays connected and pairing is kept. Call audio uses the music stream, which is the one this firmware sends to the speakers. |
+| Audio | SWI165 plays CarPlay music and calls over Wi-Fi through DiPlay. Once CarPlay is up, the car's Bluetooth music link to the iPhone is disconnected; hands-free stays connected and pairing is kept. Call audio plays like the stock CarPlay app: voice audio tagged as car source 53, with the car in call mode (mg4.83). |
 | Steering wheel | SWI165 sends wheel keys as a SystemUI broadcast, not Android media keys. DiPlay listens for it in Wi-Fi mode and sends next and previous to CarPlay. |
 | Bluetooth Music mode | Kept as a fallback. Switches the car to Bluetooth Music with the media service's `play` command, as read from the car's own MediaService. |
 | Build fixes | Replaces upstream calls to Bluetooth functions that were never published in the EVHardware submodule, so the tree compiles. The build script finds the Android SDK and writes the APK to `dist/`. |

@@ -1,6 +1,6 @@
 # SWI165 release test plan: calls, music, Bluetooth and Wi-Fi
 
-For checking a build on the car before it's called a release. Written for mg4.82.
+For checking a build on the car before it's called a release. Written for mg4.83.
 
 ## Before you start
 

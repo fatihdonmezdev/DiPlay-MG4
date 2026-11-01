@@ -1,3 +1,7 @@
+# MG4CPlay 0.2.9-mg4.83 (SWI165 fork), 2026-11-01
+
+- **Call audio like the stock CarPlay app.** Read from the car's AllGo CarPlay APK (see [docs/MG4_SWI165_ALLGO_NOTES.md](docs/MG4_SWI165_ALLGO_NOTES.md)): it plays calls as `USAGE_VOICE_COMMUNICATION` tagged with the SAIC car source `key_car_source_type=53`, and puts the car in `MODE_IN_CALL` while the call plays. DiPlay's mg4.65 voice track had neither and was silent, so mg4.66 to mg4.82 played calls on the music stream. Wi-Fi calls now use the stock setup and set `MODE_NORMAL` again when the call track stops. Music is unchanged. The log shows `call track car source=53` and `mode set=2 now=2`. If calls are silent, mg4.82 is the fallback.
+
 # MG4CPlay 0.2.9-mg4.82 (SWI165 fork), 2026-11-01
 
 - **Calls over CarPlay only** is now on by default on MG4 (a saved choice still wins). The mg4.80 log's one call with it off arrived over Wi-Fi, but 0.1 s after it started the car's own Bluetooth phone took audio focus (`focus change=-1`), and the car was still in call mode (`mode=2`) at the next start-up. With hands-free released, the iPhone has only CarPlay to send calls to.

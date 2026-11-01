@@ -36,11 +36,14 @@ internal class AudioFocusCoordinator(
     context: Context?,
     private val enabled: Boolean,
     private val report: (String) -> Unit = {},
+    /** Puts the car in MODE_IN_CALL while a call track plays, as the stock CarPlay app does. */
+    private val callMode: Boolean = false,
 ) {
     private data class Entry(val channel: AudioChannel, val attributes: AudioAttributes)
 
     private val manager = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     private val active = LinkedHashMap<AudioTrack, Entry>()
+    private val callTracks = HashSet<AudioTrack>()
     private var request: AudioFocusRequest? = null
     private var requestedChannel: AudioChannel? = null
     private val listener = AudioManager.OnAudioFocusChangeListener { change ->
@@ -57,6 +60,9 @@ internal class AudioFocusCoordinator(
 
     @Synchronized
     fun acquire(track: AudioTrack, channel: AudioChannel, attributes: AudioAttributes) {
+        if (callMode && channel == AudioChannel.PHONE && callTracks.add(track) && callTracks.size == 1) {
+            setMode(AudioManager.MODE_IN_CALL)
+        }
         // Focus is only taken when the user asked for it. The MG4 override that used to force it
         // on assumed the classic Bluetooth radio was shut down after handoff; in hybrid mode the
         // radio stays up, so grabbing focus here makes the factory AVRCP owner pause the music.
@@ -73,6 +79,15 @@ internal class AudioFocusCoordinator(
     @Synchronized
     fun release(track: AudioTrack) {
         if (active.remove(track) != null) refreshRequest()
+        if (callTracks.remove(track) && callTracks.isEmpty()) setMode(AudioManager.MODE_NORMAL)
+    }
+
+    private fun setMode(mode: Int) {
+        val result = runCatching { manager?.mode = mode; manager?.mode }
+        val line = "Audio: mode set=$mode now=${result.getOrNull()}" +
+            (result.exceptionOrNull()?.let { " error=${it.javaClass.simpleName}" } ?: "")
+        Log.i(TAG, line)
+        runCatching { report(line) }
     }
 
     private fun refreshRequest(added: AudioChannel? = null) {
@@ -165,6 +180,7 @@ class AndroidMediaSink(
         appContext,
         effectiveAudioFocus,
         onAudioDiagnostic,
+        callMode = Build.VERSION.SDK_INT == Build.VERSION_CODES.P && audioMode == AudioMode.CARPLAY_WIFI,
     )
     private val screenStateLock = Any()
     private val activeScreenTypes = mutableSetOf<Int>()
@@ -937,7 +953,6 @@ private class AudioRenderer(
         val built: AudioTrack
         var routeLabel: String
         if (streamOverride == 0) {
-            val attributes = audioAttributesFor(selection)
             routeLabel = "usage"
             built = AudioTrack.Builder()
                 .setAudioAttributes(attributes)
@@ -1007,14 +1022,15 @@ private class AudioRenderer(
             AudioManager.STREAM_MUSIC
         } else mediaChannel
         AudioChannel.NAVIGATION -> navigationChannel
-        // Wi-Fi audio on Android 9: the iPhone routes calls to CarPlay, and an MG4 head unit
-        // did not play USAGE_VOICE_COMMUNICATION from an app (silent outgoing call, mg4.65).
-        // Use the music stream, which is known to reach the speakers on this firmware.
-        AudioChannel.PHONE -> if (Build.VERSION.SDK_INT == Build.VERSION_CODES.P && audioMode == AudioMode.CARPLAY_WIFI) {
-            AudioManager.STREAM_MUSIC
-        } else 0
+        // Wi-Fi audio on Android 9: an untagged USAGE_VOICE_COMMUNICATION track was silent
+        // (mg4.65), and mg4.66-mg4.82 played calls on the music stream. mg4.83 plays them like
+        // the stock CarPlay app instead: voice usage tagged as car source 53, in MODE_IN_CALL.
         else -> 0
     }
+
+    /** Wi-Fi calls on Android 9 (MG4) use the stock app's car phone source. */
+    private val stockCallAudio =
+        Build.VERSION.SDK_INT == Build.VERSION_CODES.P && audioMode == AudioMode.CARPLAY_WIFI
 
     private fun audioAttributesFor(
         selection: AudioChannelSelection,
@@ -1030,10 +1046,7 @@ private class AudioRenderer(
                 Log.w(TAG, "legacy audio stream $streamOverride rejected; keeping usage routing", error)
             }
         }
-        return AudioAttributes.Builder()
-            .setUsage(usageFor(selection.channel))
-            .setContentType(contentTypeFor(selection.contentType))
-            .build()
+        return audioAttributesFor(selection)
     }
 
     private fun mappedSelection(): AudioChannelSelection {
@@ -1049,11 +1062,16 @@ private class AudioRenderer(
         )
     }
 
-    private fun audioAttributesFor(selection: AudioChannelSelection): AudioAttributes =
-        AudioAttributes.Builder()
+    private fun audioAttributesFor(selection: AudioChannelSelection): AudioAttributes {
+        val builder = AudioAttributes.Builder()
             .setUsage(usageFor(selection.channel))
             .setContentType(contentTypeFor(selection.contentType))
-            .build()
+        if (stockCallAudio && selection.channel == AudioChannel.PHONE) {
+            val tagged = Mg4CarAudioSource.tag(builder, Mg4CarAudioSource.CARPLAY_PHONE)
+            report("Audio: call track car source=${if (tagged) Mg4CarAudioSource.CARPLAY_PHONE else "untagged"}")
+        }
+        return builder.build()
+    }
 
     /**
      * Shares a sink-level focus request across all active non-navigation renderers.
