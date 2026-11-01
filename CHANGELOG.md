@@ -1,3 +1,7 @@
+# MG4CPlay 0.2.9-mg4.76 (SWI165 fork), 2026-11-01
+
+- **Efficient video (HEVC)** is back in Display and performance on MG4, still on by default. Whites still look slightly washed out next to USB CarPlay, and the stock AllGo app (read from its APK) decodes H.264 with a plain decoder format, while DiPlay uses HEVC. Turning the switch off sends H.264 like the stock app, to compare. The log's video output line records the colour standard, range and transfer for each.
+
 # MG4CPlay 0.2.9-mg4.75 (SWI165 fork), 2026-11-01
 
 - **Square corners** is now on by default on SWI165 (confirmed on the car in mg4.70) and no longer marked as a test. Other firmware keeps view areas. A saved choice still wins.

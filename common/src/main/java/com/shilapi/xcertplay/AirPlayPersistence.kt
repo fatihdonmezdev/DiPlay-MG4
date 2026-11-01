@@ -106,6 +106,12 @@ object AirPlayPersistence {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(KEY_HEVC_ENABLED, false)
 
+    /** The saved HEVC choice, or null when the user hasn't picked (MG4 then defaults to HEVC). */
+    fun loadHevcChoice(context: Context): Boolean? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return if (prefs.contains(KEY_HEVC_ENABLED)) prefs.getBoolean(KEY_HEVC_ENABLED, false) else null
+    }
+
     fun loadUiScalePercent(context: Context): Int = CarPlayUiScale.sanitize(
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getInt(KEY_UI_SCALE_PERCENT, CarPlayUiScale.DEFAULT),

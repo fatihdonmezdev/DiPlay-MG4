@@ -478,8 +478,9 @@ class CarPlayHostActivity : ComponentActivity() {
         // Size is now chosen only through CarPlaySize; ignore the canvas scale older builds stored.
         uiScalePercent = CarPlayUiScale.DEFAULT
         val mg4 = Mg4FirmwareProfile.detect().isMg4
-        // HEVC is proven on SWI69 and SWI165; MG4 builds no longer offer the switch.
-        hevcEnabled = mg4 || AirPlayPersistence.loadHevcEnabled(this)
+        // MG4 defaults to HEVC (half the Wi-Fi data). The stock SWI165 CarPlay app uses H.264,
+        // so the switch stays available to compare picture colour.
+        hevcEnabled = AirPlayPersistence.loadHevcChoice(this) ?: mg4
         hevcSoftwareDecoderEnabled =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
                 AirPlayPersistence.loadHevcSoftwareDecoderEnabled(this)
