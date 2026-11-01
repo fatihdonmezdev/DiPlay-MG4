@@ -562,7 +562,7 @@ class DiPlayActivity : ComponentActivity() {
         section(content, "${getString(R.string.about_public_preview_prefix)}${version()}") { card ->
             card.addView(label(getString(R.string.an_independent_carplay_receiver_for_android_head_units_wir), 17, TEXT))
         }
-        if (!mg4) section(content, getString(R.string.ota_title)) { card ->
+        if (!Mg4FirmwareProfile.detect().isMg4) section(content, getString(R.string.ota_title)) { card ->
             val otaStatus = label(getString(R.string.ota_not_checked), 15, MUTED)
             val otaButton = button(getString(R.string.ota_check), false) { }
             otaButton.setOnClickListener {
