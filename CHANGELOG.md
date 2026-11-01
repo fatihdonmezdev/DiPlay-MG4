@@ -1,3 +1,7 @@
+# MG4CPlay 0.2.9-mg4.82 (SWI165 fork), 2026-11-01
+
+- **Calls over CarPlay only** is now on by default on MG4 (a saved choice still wins). The mg4.80 log's one call with it off arrived over Wi-Fi, but 0.1 s after it started the car's own Bluetooth phone took audio focus (`focus change=-1`), and the car was still in call mode (`mode=2`) at the next start-up. With hands-free released, the iPhone has only CarPlay to send calls to.
+
 # MG4CPlay 0.2.9-mg4.81 (SWI165 fork), 2026-11-01
 
 - **Calls over CarPlay only:** keep hands-free released for the whole session. mg4.80 released it at handoff (and checked at 2 and 5 s), but the iPhone reconnects it on its own later, and calls then went back to Bluetooth. DiPlay now watches the car's hands-free connection and releases it again each time it reconnects during CarPlay, logging `hands-free reconnected ... releasing again`.

@@ -182,9 +182,19 @@ object AirPlayPersistence {
             .apply()
     }
 
-    /** Wi-Fi audio: release the car's hands-free link while CarPlay runs, so calls stay on CarPlay. */
-    fun loadCallsOverCarPlayOnly(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_CALLS_CARPLAY_ONLY, false)
+    /**
+     * Wi-Fi audio: release the car's hands-free link while CarPlay runs, so calls stay on CarPlay.
+     * On by default on MG4: with hands-free connected, the car's own phone takes audio focus as soon
+     * as a CarPlay call starts (mg4.80 log). A saved choice wins.
+     */
+    fun loadCallsOverCarPlayOnly(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return if (prefs.contains(KEY_CALLS_CARPLAY_ONLY)) {
+            prefs.getBoolean(KEY_CALLS_CARPLAY_ONLY, false)
+        } else {
+            Mg4FirmwareProfile.detect().isMg4
+        }
+    }
 
     fun saveCallsOverCarPlayOnly(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
