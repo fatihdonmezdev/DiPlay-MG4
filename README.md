@@ -140,6 +140,7 @@ FairPlay receiver.
 
 - [SWI165 firmware profile and test record](docs/MG4_SWI165.md): start here
 - [Wi-Fi audio plan and car test checklist](docs/MG4_SWI165_WIFI_AUDIO_PLAN.md)
+- [Release test plan: calls, music, Bluetooth and Wi-Fi](docs/MG4_SWI165_TEST_PLAN.md)
 - [Release notes](CHANGELOG.md)
 - [Platform-signed builds](docs/MG4_PLATFORM_BUILD.md)
 - [Installing over ADB](docs/MG4_PLATFORM_INSTALL.md)
