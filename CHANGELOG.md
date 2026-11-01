@@ -1,3 +1,8 @@
+# MG4CPlay 0.2.9-mg4.69 (SWI165 fork), 2026-11-01
+
+- Fix: no CarPlay audio at all in mg4.67 and mg4.68. Those builds stopped offering Opus for the microphone on Android 9, and the iPhone then treated the car as screen-only: CarPlay was not offered as an audio output, so music and calls stayed on Bluetooth while DiPlay had released the car's Bluetooth music. DiPlay offers Opus again.
+- Call microphone on Android 9: Android 9 has no Opus encoder, so DiPlay now encodes the microphone in software with Concentus, a pure-Java Opus encoder. The platform encoder is still used where one exists. The microphone log line shows which (`opus=software` or `opus=platform`).
+
 # MG4CPlay 0.2.9-mg4.68 (SWI165 fork), 2026-11-01
 
 - Calls: the call audio player stalled on every call in mg4.65 and mg4.66. Call audio arrived from the iPhone and the player was set up, but it never logged stats, focus or an error, even when the call ended, so it was stuck before playing anything. Calls and Siri now write to the car's audio output without waiting, so a car output that never starts can no longer hang the stream. Music is unchanged.

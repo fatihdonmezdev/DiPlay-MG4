@@ -4,12 +4,12 @@ import android.media.MediaCodecList
 import android.media.MediaFormat
 
 /**
- * Whether this head unit can encode Opus for the CarPlay microphone uplink.
+ * Whether this head unit has a platform Opus encoder for the CarPlay microphone uplink.
  *
  * Android 9 ships an Opus decoder but no Opus encoder (the platform encoder arrived in
- * Android 10). If DiPlay still offers Opus input, the iPhone picks it for calls and the
- * microphone cannot start: an outgoing call over Wi-Fi audio on an MG4 SWI165 showed
- * `Microphone telephony: failed` with `codec=OPUS` (mg4.66).
+ * Android 10). DiPlay must still offer Opus input: in mg4.67 it stopped doing so on Android 9
+ * and the iPhone then treated the car as screen-only, with no CarPlay audio at all. Without a
+ * platform encoder, [OpusEncoder] falls back to the pure-Java Concentus encoder.
  */
 object OpusSupport {
     @Volatile private var cached: Boolean? = null

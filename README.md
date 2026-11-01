@@ -5,7 +5,7 @@ Wireless CarPlay for the MG4 head unit. This is a personal fork of
 for an Australian **MG4 on SWI165 firmware** (`SWI165-29176-1100R11`, Android 9,
 AUTUS SAIC MT2712, 1920x720 panel). Upstream is tested on SWI69.
 
-Current build: **0.2.9-mg4.68**. Car-test builds install as
+Current build: **0.2.9-mg4.69**. Car-test builds install as
 `com.shihab.diplay.hudtest`, alongside any upstream `com.shihab.diplay` install.
 Run one at a time.
 
@@ -16,8 +16,8 @@ Run one at a time.
 | Wireless CarPlay over the car hotspot | Working, about 4 s from launch to first frame |
 | Picture (overlay video renderer) | Working, fixes the washed-out look |
 | Battery and range sent to the iPhone | Working (Apple Maps EV features) |
-| Music over Wi-Fi (CarPlay audio) | Working; default on SWI165 from mg4.66 |
-| Phone calls over Wi-Fi | Not working yet. mg4.66: the microphone failed (fixed in mg4.67) and the call audio player stalled before playing. mg4.68 stops it hanging and logs each step; awaiting a car test |
+| Music over Wi-Fi (CarPlay audio) | Working in mg4.65 and mg4.66. Broken in mg4.67 and mg4.68 (no CarPlay audio at all); fixed in mg4.69, awaiting a car test |
+| Phone calls over Wi-Fi | Not working yet. mg4.69 adds a software Opus encoder for the microphone and stops the call audio player hanging; awaiting a car test |
 | Steering-wheel next and previous | Working (mg4.66) |
 | Siri and Maps voice prompts | Not yet tested |
 | Bluetooth Music mode (fallback) | Fix in mg4.66, awaiting a car test |
@@ -146,6 +146,9 @@ by [@fatihdonmezdev](https://github.com/fatihdonmezdev). Based on
 [xcertplay](https://github.com/shilapi/xcertplay), GPL-3.0. The home/settings UI
 adapts [DiAuto](https://github.com/shihabal3amri/DiAuto), AGPL-3.0; that license is
 included in `docs/licenses`. Preserve those notices when distributing modifications.
+
+The Android 9 call microphone uses [Concentus](https://github.com/lostromb/concentus)
+(BSD-3-Clause), a pure-Java Opus encoder.
 
 SWI165 media and steering-wheel details were read from the car's own MediaService
 APK and cross-checked against [MG4Control](https://github.com/SliDeeN/MG4Control),

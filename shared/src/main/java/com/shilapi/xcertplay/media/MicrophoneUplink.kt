@@ -72,6 +72,7 @@ internal class MicrophoneUplink(private val config: MicrophoneConfig) : Closeabl
                 createRecorder(MediaRecorder.AudioSource.MIC, channelMask, bufferSize)
                     ?.also { sourceUsed = "${sourceName(source)} refused, MIC" }
             } else null
+        if (nextEncoder != null) sourceUsed = "$sourceUsed opus=${nextEncoder.kind}"
         if (nextRecorder == null) {
             sourceUsed = "none (${sourceName(source)} and MIC refused)"
             nextEncoder?.close()

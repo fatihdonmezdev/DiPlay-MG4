@@ -2836,7 +2836,9 @@ class CarPlayHostActivity : ComponentActivity() {
             rightHandDrive = rightHandDrive,
             hevc = hevcEnabled,
             microphone = microphoneAvailable,
-            microphoneOpus = com.shilapi.xcertplay.media.OpusSupport.encoderAvailable(),
+            // Always offer Opus input: wireless iPhones treat the car as screen-only without it
+            // (mg4.67 lost all CarPlay audio). Android 9 encodes it in software (Concentus).
+            microphoneOpus = true,
             manufacturer = normalizedManufacturer(),
             model = normalizedModel(),
             oemLabel = oemLabel,
