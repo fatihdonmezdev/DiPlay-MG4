@@ -1,3 +1,10 @@
+# MG4CPlay 0.2.9-mg4.81 (SWI165 fork), 2026-11-01
+
+- **Calls over CarPlay only:** keep hands-free released for the whole session. mg4.80 released it at handoff (and checked at 2 and 5 s), but the iPhone reconnects it on its own later, and calls then went back to Bluetooth. DiPlay now watches the car's hands-free connection and releases it again each time it reconnects during CarPlay, logging `hands-free reconnected ... releasing again`.
+- Microphone: warm up the software Opus encoder when CarPlay connects. mg4.80 showed the first half-second of each call at 23 ms per 20 ms frame (worst 173 ms) before settling at 5 ms, which added delay at the start of every call and Siri request.
+- Fix the display list (mg4.79) never appearing: the diagnostic privacy filter drops lines containing `name=`.
+- mg4.80 car test: music resend requests now reach the iPhone (the music stream's SETUP carries `controlPort`; call and Siri streams don't). Hands-free release works. Steering-wheel raw codes confirmed: 297 volume up, 298 volume down, 299 previous, 300 next, 3 home.
+
 # MG4CPlay 0.2.9-mg4.80 (SWI165 fork), 2026-11-01
 
 - New **MG4 vehicle > Directions on the dashboard (test)** (SWI165, off by default). Sends CarPlay's next turn, distance, street, remaining distance and time to the instrument cluster's navigation area. Read from the car's own APKs: the cluster takes navigation from `com.saicmotor.adapterservice`, whose exported `MapService` accepts the sat-nav's guidance (`guideStatusChange`, `guideInfosChange`, `roadInfoChange`, `remainingDistanceChange`, `remainingTimesChange`) and relays it to the cluster app and the cluster ECU. CarPlay maneuver types are mapped to the cluster's own turn icons. The stock CarPlay app does not do this on SWI165. Each turn change is logged (`Cluster nav:`).

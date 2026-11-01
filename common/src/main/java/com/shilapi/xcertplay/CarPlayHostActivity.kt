@@ -3345,8 +3345,9 @@ class CarPlayHostActivity : ComponentActivity() {
                 .map { it.displayId }.toSet()
             manager.displays.forEach { display ->
                 val metrics = android.util.DisplayMetrics().also { display.getRealMetrics(it) }
-                appendLog(
-                    "Display id=${display.displayId} name=\"${display.name}\" size=${metrics.widthPixels}x${metrics.heightPixels} " +
+                // appendFileLog: the privacy filter drops any line containing "name=".
+                appendFileLog(
+                    "Display id=${display.displayId} label=\"${display.name}\" size=${metrics.widthPixels}x${metrics.heightPixels} " +
                         "dpi=${metrics.densityDpi} flags=0x${Integer.toHexString(display.flags)} " +
                         "state=${display.state} presentation=${display.displayId in presentation}",
                 )

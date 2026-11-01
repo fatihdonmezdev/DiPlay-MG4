@@ -190,3 +190,42 @@ internal class OpusEncoder(bitrate: Int) : Closeable {
         const val SOFTWARE_COMPLEXITY = 3
     }
 }
+
+/**
+ * Runs the software Opus encoder for a few seconds of audio when CarPlay connects, so Java has
+ * compiled it before the first call or Siri request. mg4.80 logs: the first half-second of a call
+ * averaged 23 ms per 20 ms frame (worst 173 ms), then 5 ms once warmed up, so each call started
+ * with a growing microphone delay.
+ */
+internal object OpusWarmUp {
+    @Volatile private var done = false
+
+    fun start() {
+        if (done || OpusSupport.encoderAvailable()) return
+        done = true
+        Thread({
+            runCatching {
+                val encoder = OpusEncoder(48_000)
+                val frame = ByteArray(960 * 2)
+                var seed = 1
+                repeat(WARM_FRAMES) {
+                    // Quiet noise, so the encoder takes its speech paths rather than silence shortcuts.
+                    for (index in frame.indices step 2) {
+                        seed = seed * 1103515245 + 12345
+                        val sample = (seed shr 16) % 400
+                        frame[index] = sample.toByte()
+                        frame[index + 1] = (sample shr 8).toByte()
+                    }
+                    encoder.encode(frame)
+                }
+                encoder.close()
+            }
+        }, "opus-warm-up").apply {
+            isDaemon = true
+            priority = Thread.MIN_PRIORITY
+            start()
+        }
+    }
+
+    private const val WARM_FRAMES = 150
+}

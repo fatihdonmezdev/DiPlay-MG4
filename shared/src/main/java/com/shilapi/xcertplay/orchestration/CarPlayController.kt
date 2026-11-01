@@ -462,6 +462,7 @@ class CarPlayController(
         }
         videoGate?.close()
         restoreBluetoothAfterWirelessCarPlay()
+        stopWatchingHandsFree()
         reconnectHandsFree()
         if (clusterDirections) com.shilapi.xcertplay.vehicle.Mg4ClusterNavigation.stop(appContext)
         if (bydOutputsEnabled) {
@@ -2083,6 +2084,40 @@ class CarPlayController(
                 start()
             }
         }
+        if (releaseHandsFree) watchHandsFree(adapter, device)
+    }
+
+    @Volatile private var handsFreeWatcher: android.content.BroadcastReceiver? = null
+    private var handsFreeRereleases = 0
+
+    /**
+     * The iPhone reconnects the car's hands-free on its own a little after it was released (the
+     * three releases above only cover the first five seconds). While calls are CarPlay-only,
+     * release it again whenever it reconnects during this session, and log each time.
+     */
+    private fun watchHandsFree(adapter: BluetoothAdapter, device: BluetoothDevice) {
+        if (handsFreeWatcher != null) return
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context, intent: Intent) {
+                val changed = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1)
+                if (changed?.address != device.address) return
+                if (state != BluetoothProfile.STATE_CONNECTED && state != BluetoothProfile.STATE_CONNECTING) return
+                if (closed || phase != Phase.WIRELESS) return
+                handsFreeRereleases++
+                debugLog("car Bluetooth: hands-free reconnected (state=$state); releasing again #$handsFreeRereleases")
+                releaseBluetoothProfile(adapter, device, BLUETOOTH_PROFILE_HEADSET_CLIENT, "Hands-free", 100 + handsFreeRereleases)
+            }
+        }
+        runCatching {
+            appContext.registerReceiver(receiver, android.content.IntentFilter(ACTION_HEADSET_CLIENT_STATE))
+            handsFreeWatcher = receiver
+        }.onFailure { debugLog("car Bluetooth: hands-free watcher failed: ${it.javaClass.simpleName}") }
+    }
+
+    private fun stopWatchingHandsFree() {
+        handsFreeWatcher?.let { receiver -> runCatching { appContext.unregisterReceiver(receiver) } }
+        handsFreeWatcher = null
     }
 
     /** Gives the car its hands-free link back after a CarPlay-only calls session. */
@@ -2463,6 +2498,9 @@ class CarPlayController(
         private const val BLUETOOTH_PROFILE_AVRCP_CONTROLLER = 12
         // BluetoothProfile.HEADSET_CLIENT (hidden): the head unit's hands-free side.
         private const val BLUETOOTH_PROFILE_HEADSET_CLIENT = 16
+        // BluetoothHeadsetClient.ACTION_CONNECTION_STATE_CHANGED (hidden).
+        private const val ACTION_HEADSET_CLIENT_STATE =
+            "android.bluetooth.headsetclient.profile.action.CONNECTION_STATE_CHANGED"
 
         /** Hidden `BluetoothProfile.A2DP_SINK` on Android 9: the role a head unit plays. */
         private const val BLUETOOTH_PROFILE_A2DP_SINK = 11

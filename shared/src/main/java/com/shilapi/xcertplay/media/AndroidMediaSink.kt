@@ -156,6 +156,11 @@ class AndroidMediaSink(
     private val appContext = context?.applicationContext
     // Wi-Fi audio plays music locally, so it needs focus; hybrid leaves focus to the car.
     private val effectiveAudioFocus = audioFocusEnabled || audioMode == AudioMode.CARPLAY_WIFI
+
+    init {
+        // Calls and Siri use the software microphone encoder; compile it before it's needed.
+        if (audioMode == AudioMode.CARPLAY_WIFI) OpusWarmUp.start()
+    }
     private val audioFocusCoordinator = AudioFocusCoordinator(
         appContext,
         effectiveAudioFocus,
