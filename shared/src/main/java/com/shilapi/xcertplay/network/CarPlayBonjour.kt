@@ -8,10 +8,11 @@ import android.os.Build
 import android.util.Log
 import com.shilapi.xcertplay.airplay.AirPlayConfig
 import com.shilapi.xcertplay.airplay.AirPlayIdentity
-import java.io.BufferedReader
+import java.io.BufferedInputStream
+import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.IOException
-import java.io.InputStreamReader
+import java.io.InputStream
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -530,10 +531,7 @@ class CarPlayBonjour(
             val output = socket.getOutputStream()
             output.write(request.toByteArray(StandardCharsets.US_ASCII))
             output.flush()
-            val reader = BufferedReader(
-                InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII),
-            )
-            return reader.readLine()
+            return readStatusLine(socket.getInputStream())
                 ?: throw IOException("AirPlay control probe returned no status line")
         } finally {
             synchronized(lifecycleLock) {
@@ -541,6 +539,20 @@ class CarPlayBonjour(
             }
             runCatching { socket.close() }
         }
+    }
+
+    /** Reads up to the first newline. Fails when the host sends more than [MAX_STATUS_LINE_BYTES] without one. */
+    private fun readStatusLine(input: InputStream): String? {
+        val line = ByteArrayOutputStream()
+        val buffered = BufferedInputStream(input)
+        while (true) {
+            val next = buffered.read()
+            if (next < 0) return if (line.size() == 0) null else line.toString(StandardCharsets.US_ASCII.name())
+            if (next == '\n'.code) break
+            if (line.size() >= MAX_STATUS_LINE_BYTES) throw IOException("AirPlay control probe status line over $MAX_STATUS_LINE_BYTES bytes")
+            line.write(next)
+        }
+        return line.toString(StandardCharsets.US_ASCII.name()).removeSuffix("\r")
     }
 
     private fun emit(event: CarPlayBonjourEvent) {
@@ -577,6 +589,7 @@ class CarPlayBonjour(
         const val PROBE_RETRY_DELAY_MILLIS = 1_500L
         const val CONNECT_TIMEOUT_MILLIS = 3_000
         const val READ_TIMEOUT_MILLIS = 3_000
+        const val MAX_STATUS_LINE_BYTES = 8 * 1024
         const val JOIN_TIMEOUT_MILLIS = 2_000L
         const val FAILURE_NONE = -1
     }
