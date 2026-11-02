@@ -2,7 +2,9 @@ package com.shilapi.xcertplay.network
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.IntentFilter
 import android.net.wifi.SupplicantState
+import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
 import android.net.wifi.p2p.WifiP2pGroup
 import android.net.wifi.p2p.WifiP2pManager
@@ -61,10 +63,14 @@ class LegacyWifiP2pGroupManager(
             val wifi = appContext.getSystemService(WifiManager::class.java)
             val wifiEnabled = runCatching { wifi?.isWifiEnabled }.getOrNull()
             val fiveGhz = runCatching { wifi?.is5GHzBandSupported }.getOrNull()
+            val hotspotApBand = savedHotspotApBand(wifi)
+            val fiveGhzCapable = LegacyP2pChannelPlan.fiveGhzCapable(fiveGhz, hotspotApBand)
             val station = stationFrequency(wifi)
             diagnostic("Wi-Fi P2P legacy preflight wifiEnabled=$wifiEnabled fiveGhzSupported=${fiveGhz ?: "unknown"} " +
+                "carHotspotBand=${LegacyP2pChannelPlan.apBandLabel(hotspotApBand)} fiveGhzCapable=$fiveGhzCapable " +
                 "stationMHz=${station ?: "none"} band=$band")
             if (wifiEnabled == false) throw IOException("Turn on Wi-Fi in the car's settings, then reconnect")
+            awaitP2pEnabled(deadline)
 
             val handlerThread = HandlerThread("xcertplay-wifi-p2p-legacy").apply { start() }
             val p2pChannel = p2pManager.initialize(appContext, handlerThread.looper) {
@@ -78,7 +84,7 @@ class LegacyWifiP2pGroupManager(
 
             reclaimExistingGroup(p2pChannel, deadline)
 
-            val plan = LegacyP2pChannelPlan.plan(band, station, fiveGhz != false)
+            val plan = LegacyP2pChannelPlan.plan(band, station, fiveGhzCapable)
             diagnostic("Wi-Fi P2P legacy plan channels=${plan.joinToString(",") { if (it == 0) "auto" else "$it" }}")
             var lastFailure: IOException? = null
             for (operatingChannel in plan) {
@@ -163,7 +169,8 @@ class LegacyWifiP2pGroupManager(
         }
         val code = result.get()
         if (code != SUCCESS) {
-            diagnostic("Wi-Fi P2P legacy create rejected code=$code")
+            diagnostic("Wi-Fi P2P legacy create rejected code=$code reason=${LegacyP2pChannelPlan.failureLabel(code)} " +
+                "state=${LegacyP2pChannelPlan.p2pStateLabel(p2pState())}")
             throw IOException("Wi-Fi Direct group request was rejected (code=$code)")
         }
         diagnostic("Wi-Fi P2P legacy create accepted")
@@ -337,6 +344,41 @@ class LegacyWifiP2pGroupManager(
         }.onFailure { diagnostic("Wi-Fi P2P legacy deletePersistentGroup failed type=${it.javaClass.simpleName}") }
     }
 
+    /**
+     * Android 9's Wi-Fi Direct service answers createGroup with BUSY and ignores the channel call
+     * while it is disabled (mg4.86 car test: 12 tries, all BUSY), so check its state first.
+     */
+    private fun awaitP2pEnabled(deadline: Long) {
+        val started = System.nanoTime()
+        val waitDeadline = minOf(deadline, started + TimeUnit.MILLISECONDS.toNanos(P2P_STATE_WAIT_MILLIS))
+        var state = p2pState()
+        while (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED && remaining(waitDeadline) > 0) {
+            ensureOpen()
+            Thread.sleep(200)
+            state = p2pState()
+        }
+        val waited = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+        diagnostic("Wi-Fi P2P legacy state=${LegacyP2pChannelPlan.p2pStateLabel(state)} waitedMs=$waited " +
+            "carHotspot=${CarHotspotStatus.isEnabled(appContext) ?: "unknown"}")
+        if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
+            throw IOException("Wi-Fi Direct is switched off on this car (Android reports it disabled). " +
+                "Choose Car hotspot in the wireless link settings.")
+        }
+    }
+
+    /** The sticky Wi-Fi Direct state broadcast; null when it was never sent. */
+    private fun p2pState(): Int? = runCatching {
+        appContext.registerReceiver(null, IntentFilter(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION))
+            ?.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1)?.takeIf { it > 0 }
+    }.getOrNull()
+
+    /** The saved car hotspot's band (0 = 2.4 GHz, 1 = 5 GHz, -1 = any), or null when hidden. */
+    private fun savedHotspotApBand(wifi: WifiManager?): Int? = runCatching {
+        val configuration = WifiManager::class.java.getMethod("getWifiApConfiguration")
+            .invoke(wifi ?: return@runCatching null) as? WifiConfiguration ?: return@runCatching null
+        WifiConfiguration::class.java.getField("apBand").getInt(configuration)
+    }.getOrNull()
+
     private fun hiddenNetworkId(group: WifiP2pGroup): Int? = runCatching {
         WifiP2pGroup::class.java.getMethod("getNetworkId").invoke(group) as Int
     }.getOrNull()
@@ -396,6 +438,7 @@ class LegacyWifiP2pGroupManager(
         const val OWNED_KEY = "owned_ssid"
         const val REMOVE_TIMEOUT_MILLIS = 2_000L
         const val ATTEMPT_MILLIS = 7_000L
+        const val P2P_STATE_WAIT_MILLIS = 3_000L
         val POLL_NANOS: Long = TimeUnit.MILLISECONDS.toNanos(500)
     }
 }
@@ -424,4 +467,36 @@ internal object LegacyP2pChannelPlan {
         if (band != ManualHotspotBand.GHZ_5) channels += 0
         return channels.toList()
     }
+
+    /**
+     * The MG4 reports no 5 GHz support yet runs its own hotspot on channel 36, so a car hotspot
+     * saved on 5 GHz overrides the radio's answer. Only an explicit "no" with no such hotspot skips 5 GHz.
+     */
+    fun fiveGhzCapable(radioReports: Boolean?, hotspotApBand: Int?): Boolean =
+        radioReports != false || hotspotApBand == AP_BAND_5GHZ
+
+    fun apBandLabel(apBand: Int?): String = when (apBand) {
+        null -> "unknown"
+        AP_BAND_5GHZ -> "5GHz"
+        0 -> "2.4GHz"
+        -1 -> "any"
+        else -> "other($apBand)"
+    }
+
+    fun p2pStateLabel(state: Int?): String = when (state) {
+        null -> "unknown"
+        1 -> "disabled"
+        2 -> "enabled"
+        else -> "other($state)"
+    }
+
+    fun failureLabel(code: Int?): String = when (code) {
+        0 -> "error"
+        1 -> "unsupported"
+        2 -> "busy"
+        3 -> "no_service_requests"
+        else -> "other"
+    }
+
+    private const val AP_BAND_5GHZ = 1
 }

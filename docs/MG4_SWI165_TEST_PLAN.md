@@ -73,9 +73,11 @@ end, wait a few seconds, then copy it off.
 | F2 | Turn the iPhone's Wi-Fi off for 10 s, then on | CarPlay reconnects by itself within about 30 s | `transport error`, `Reconnecting`, new `AirPlay session active` |
 | F3 | During a call, walk 10 m from the car and back | Call carries on over the iPhone, or recovers | Note what happened |
 | F4 | Car's own hotspot or Wi-Fi setting changed | n/a: note only | `wireless hotspot backend` line |
-| F5 | mg4.86: switch to **Wi-Fi Direct** (car hotspot off, car Wi-Fi on), band **Automatic**, then connect | CarPlay starts; note the band | `Wi-Fi P2P legacy plan`, `setChannels`, `Wi-Fi P2P ready mode=LEGACY band=` |
+| F5 | mg4.87: switch to **Wi-Fi Direct** (car hotspot off, car Wi-Fi on), band **Automatic**, then connect | CarPlay starts; note the band. If it stops with "Wi-Fi Direct is switched off", note it and go back to Car hotspot | `Wi-Fi P2P legacy state=`, `fiveGhzCapable=`, `Wi-Fi P2P legacy plan`, `setChannels`, `Wi-Fi P2P ready mode=LEGACY band=` |
 | F6 | If F5 fails or is on 5 GHz and stutters, set band **2.4 GHz only** and repeat | CarPlay starts on 2.4 GHz | `band=2.4 GHz` |
 | F7 | Repeat B (music) and C (calls) on Wi-Fi Direct and compare with the car hotspot | Fewer skips and less call static than the hotspot | `Audio loss` lines and `call loss packets=` at hang-up, for both modes |
+| F8 | mg4.86 log: with the car hotspot, video and music froze for 1 to 5 s about every 160 s (Android 9's longest gap between Wi-Fi scans while not joined to a network). Car hotspot on, **car Wi-Fi off**, play music with the map showing for at least 10 minutes | No freezes every 160 s | `Receive: video ... interArrivalMaxMs=` stays under 1000 and `audio stats ... underruns=0`; no `Audio loss` bursts with `udpRcvbufErrors=+` about 160 s apart |
+| F9 | Repeat F8 with the car Wi-Fi **on** (not joined to a network), for comparison | Note whether the 160 s freezes return | Same lines as F8; note the times of each freeze |
 
 ## Known risks to check in code before release
 
