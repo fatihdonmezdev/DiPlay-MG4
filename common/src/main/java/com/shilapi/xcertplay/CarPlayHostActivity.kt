@@ -3698,10 +3698,11 @@ class CarPlayHostActivity : ComponentActivity() {
             MotionEvent.ACTION_POINTER_DOWN,
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_POINTER_UP,
+            // The unmasked action keeps the pointer index: ACTION_POINTER_UP(1), not always (0).
             MotionEvent.ACTION_CANCEL -> Log.i(
                 TAG,
-                "touch action=${MotionEvent.actionToString(event.actionMasked)} " +
-                    "pointers=${event.pointerCount} queued=$queued",
+                "touch action=${MotionEvent.actionToString(event.action)} " +
+                    "pointer=${event.getPointerId(event.actionIndex)} pointers=${event.pointerCount} queued=$queued",
             )
         }
         return true
