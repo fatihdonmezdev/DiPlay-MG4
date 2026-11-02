@@ -19,6 +19,11 @@ data class AudioFormat(
     val channels: Int,
     val payloadType: Int,
     val audioType: String = "media",
+    /**
+     * The rate of the stream's RTP timestamps. Opus is always decoded at 48 kHz, but audioFormat
+     * 0x10000000 and 0x20000000 count at 16 and 24 kHz (upstream DiPlay #644).
+     */
+    val rtpClockRate: Int = sampleRate,
 )
 
 /**
@@ -368,7 +373,10 @@ object AudioStreamCodec {
         val isOpus = (bits and OPUS_MONO) != 0L
         val pcm = PCM_FORMAT[bits]
         return when {
-            isOpus -> AudioFormat(AudioCodecKind.OPUS, 48_000, 1, payloadType, audioType)
+            isOpus -> AudioFormat(
+                AudioCodecKind.OPUS, 48_000, 1, payloadType, audioType,
+                rtpClockRate = opusClockRate(bits),
+            )
             isAacLc -> AudioFormat(
                 AudioCodecKind.AAC_LC,
                 if ((bits and AAC_LC_48K_STEREO) != 0L) 48_000 else 44_100,
@@ -379,6 +387,14 @@ object AudioStreamCodec {
             pcm != null -> AudioFormat(AudioCodecKind.LPCM, pcm.first, pcm.second, payloadType, audioType)
             else -> AudioFormat(AudioCodecKind.LPCM, 44_100, 2, payloadType, audioType)
         }
+    }
+
+    /** The negotiated Opus format's RTP rate: 48, 24 or 16 kHz. */
+    fun opusClockRate(bits: Long): Int = when {
+        bits and 0x40000000L != 0L -> 48_000
+        bits and 0x20000000L != 0L -> 24_000
+        bits and 0x10000000L != 0L -> 16_000
+        else -> 48_000
     }
 
     private const val AAC_LC_44K_STEREO = 0x400000L

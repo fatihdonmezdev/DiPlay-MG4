@@ -299,9 +299,12 @@ class CarPlayMediaEngine(
         val active = audioMeta.values.toList()
         if (active.isEmpty()) return null
         val streams = active.map { meta ->
+            // sampleTime counts on the stream's RTP clock. Counted at the 48 kHz Opus decode rate,
+            // a 16 kHz call stream ran 3x ahead of the audio that had arrived (upstream DiPlay #644).
+            val clockRate = meta.format.rtpClockRate
             val entry = linkedMapOf<String, Any?>(
                 "type" to meta.type,
-                "sampleRate" to meta.format.sampleRate,
+                "sampleRate" to clockRate,
             )
             val firstSample = meta.firstSample
             val originNs = meta.originNs
@@ -312,7 +315,7 @@ class CarPlayMediaEngine(
                     (nowNs - originNs) / 1e9 - meta.playoutLatencyMs / 1000.0,
                 )
                 val firstUnsigned = firstSample.toLong() and 0xffff_ffffL
-                val sampleTime = (firstUnsigned + Math.round(elapsedSec * meta.format.sampleRate)) and
+                val sampleTime = (firstUnsigned + Math.round(elapsedSec * clockRate)) and
                     0xffff_ffffL
                 entry["streamConnectionID"] = unsignedPlistInteger(meta.connectionId ?: 0L)
                 entry["timestamp"] = session.syncedNtp()
