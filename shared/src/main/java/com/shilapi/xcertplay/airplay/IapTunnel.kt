@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong
  */
 class IapTunnel(
     private val readKey: ByteArray,
+    private val expectedPeer: InetAddress,
     bindAddress: InetAddress = InetAddress.getByName("0.0.0.0"),
 ) : Closeable {
     interface Listener {
@@ -118,6 +119,11 @@ class IapTunnel(
             if (closed.get()) {
                 safeClose(accepted)
                 return
+            }
+            if (accepted.inetAddress != expectedPeer) {
+                safeClose(accepted)
+                listener.onDebug("AirPlay iAP tunnel rejected sender outside the control session")
+                continue
             }
             accepted.setSoLinger(true, 0)
             socket = accepted
