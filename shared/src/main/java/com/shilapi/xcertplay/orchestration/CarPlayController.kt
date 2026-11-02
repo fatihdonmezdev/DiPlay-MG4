@@ -412,11 +412,46 @@ class CarPlayController(
         }
     }
 
+    /** A queued move that a newer move of the same fingers may still overwrite. */
+    private class PendingMove(val session: AirPlaySession, var contacts: List<AirPlayContact>)
+
+    private val touchLock = Any()
+    private var lastTouch: List<AirPlayContact>? = null
+    private var pendingMove: PendingMove? = null
+
+    /**
+     * A move keeps the same fingers down. Behind a slow write it replaces the move still waiting in
+     * the queue, so only the newest position is sent. Presses and releases are never merged.
+     */
     fun sendTouch(contacts: List<AirPlayContact>): Boolean {
         if (closed) return false
         val session = activeSession ?: return false
         return try {
-            touchExecutor.execute { session.sendTouch(contacts) }
+            synchronized(touchLock) {
+                val isMove = contacts.isNotEmpty() && contacts.all { it.down } &&
+                    lastTouch?.filter { it.down }?.map { it.id }?.toSet() == contacts.map { it.id }.toSet()
+                lastTouch = contacts
+                val pending = pendingMove
+                if (isMove && pending != null && pending.session === session) {
+                    pending.contacts = contacts
+                    return true
+                }
+                if (!isMove) {
+                    pendingMove = null
+                    touchExecutor.execute { session.sendTouch(contacts) }
+                } else {
+                    val move = PendingMove(session, contacts)
+                    touchExecutor.execute {
+                        val latest = synchronized(touchLock) {
+                            if (pendingMove === move) pendingMove = null
+                            move.contacts
+                        }
+                        session.sendTouch(latest)
+                    }
+                    // Set only after execute() accepted the task, and still under touchLock, which the task needs to start.
+                    pendingMove = move
+                }
+            }
             true
         } catch (_: Exception) {
             false
