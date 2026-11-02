@@ -37,7 +37,7 @@ class ControlReceiveBoundsTest {
 
     @Test fun parserKeepsRealSizedMessages() {
         val setup = request(756, ByteArray(756) { it.toByte() })
-        val mask = ByteArray(IPhoneCornerMaskWireLimit.MAX_PNG_BYTES + 64 * 1024) { it.toByte() }
+        val mask = ByteArray(512 * 1024 /* upstream iPhone corner-mask PNG limit */ + 64 * 1024) { it.toByte() }
         val parsed = RtspMessage.parseMessages(setup + request(mask.size, mask) + "GET /in".toByteArray())
         assertEquals(2, parsed.messages.size)
         assertEquals(756, parsed.messages[0].body.size)

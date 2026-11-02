@@ -63,7 +63,7 @@ class IapPackageBoundsTest {
     // Regression guard, not a reproduction: this channel already rejected an oversized header on main.
     @Test fun videoSettingsChannelClosesOnOversizedPackageHeader() {
         val logs = java.util.concurrent.CopyOnWriteArrayList<String>()
-        val channel = VideoSettingsChannel(key, key, logs::add)
+        val channel = VideoSettingsChannel(key, key, loopback) { logs.add(it) }
         val port = channel.listen(loopback)
         try {
             Socket(loopback, port).use { client ->

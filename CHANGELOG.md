@@ -1,3 +1,14 @@
+# MG4CPlay 0.2.9-mg4.89 (SWI165 fork), 2026-11-02
+
+Fixes ported from upstream DiPlay 0.2.19–0.2.22 ([shihabal3amri/DiPlay](https://github.com/shihabal3amri/DiPlay)).
+
+- **Call and Siri audio clock** (upstream #644). For 16 kHz and 24 kHz Opus streams (calls, Siri, navigation prompts), DiPlay told the iPhone its playback position at the 48 kHz decode rate, up to 3x too fast. It now counts at the stream's own RTP rate. May help call quality; check whether the far end sounds clearer.
+- **Wi-Fi drop detection on Android 9** (upstream #1042). TCP keepalive on the CarPlay control connection, so DiPlay notices about 20 s after the iPhone drops off Wi-Fi and reconnects, instead of a frozen picture until the screen is touched. Worth checking against the 160 s freezes (F8, F9).
+- **Pinch and two-finger gestures** (upstream #912). Each finger keeps its own touch slot from press to release, so pinching in Apple Maps no longer jumps when the first finger lifts.
+- **Drags over a slow link** (upstream #1134). A drag sends the finger's newest position instead of queueing every old one.
+- **Hardening** (upstream #1122, #1123, #1125, #1126, #1128). Control requests, iAP packages, Bonjour probe replies, binary plists and USB network blocks are size-bounded. Screen, iAP, video-settings and event connections, and clock-timing replies, are accepted only from the iPhone that holds the control session. Upstream did not test this in car hotspot mode: if the picture or touch stops working, look for `rejected sender outside the control session` in the report.
+- Not ported because the MG4 doesn't need them: upstream #804 (Android 9 here has no audio focus or MediaSession) and #994 (the call mode already returns to `MODE_NORMAL`).
+
 # MG4CPlay 0.2.9-mg4.88 (SWI165 fork), 2026-11-02
 
 - **Download to iPhone (test).** Settings > Diagnostics has a new **Download to iPhone** button next to **Save diagnostic report**, so a report no longer needs a USB stick. During wireless CarPlay the iPhone is already on the car's Wi-Fi (the car hotspot `ap0`, or the Wi-Fi Direct `p2p-*` group), so MG4CPlay builds the same redacted report and serves it once from a small web server bound only to that network's IPv4 address. A dialog shows a QR code and the link; scan it with the iPhone camera, and Safari downloads `MG4CPlay-<time>.txt` to share with AirDrop or save to Files. The link has a random 128-bit one-time path (anything else gets a 404) and stops after one download, after 5 minutes, or when the dialog closes. The button is greyed out in USB mode or when wireless CarPlay isn't connected. The log shows `Report download served bytes= ms=`, `Report download expired` or `Report download stopped`.
