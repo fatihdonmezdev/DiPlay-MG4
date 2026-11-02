@@ -12,8 +12,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -43,6 +45,7 @@ import com.shilapi.xcertplay.orchestration.ManualHotspotBand
 import com.shilapi.xcertplay.orchestration.WirelessHotspotMode
 import com.shilapi.xcertplay.transport.EvChargingConnectors
 import java.io.File
+import java.net.Inet4Address
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,6 +69,11 @@ class DiPlayActivity : ComponentActivity() {
     private var testToneTrack: AudioTrack? = null
     private var toneStop: Runnable? = null
     private var exportButton: Button? = null
+    private var downloadButton: Button? = null
+    private var downloadHint: TextView? = null
+    private var reportDownload: ReportDownloadServer? = null
+    private var reportDownloadPreparing = false
+    private var reportDownloadStatus: TextView? = null
     private var adbStatus: TextView? = null
     private var adbCheckGeneration = 0
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -177,6 +185,7 @@ class DiPlayActivity : ComponentActivity() {
         }
     }
     override fun onPause() { handler.removeCallbacks(tick); super.onPause() }
+    override fun onDestroy() { reportDownload?.close(); reportDownload = null; super.onDestroy() }
 
     private fun render() {
         status = null; connectButton = null; disconnectButton = null; lastRunning = null
@@ -295,6 +304,11 @@ class DiPlayActivity : ComponentActivity() {
                 else chooseReportDestination()
             }.apply { isEnabled = !exportInProgress }
             card.addView(exportButton, matchButton(10, 60))
+            downloadButton = button(getString(R.string.download_to_iphone), false) { startReportDownload() }
+            card.addView(downloadButton, matchButton(10, 60))
+            downloadHint = label(getString(R.string.download_to_iphone_unavailable), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) }
+            card.addView(downloadHint)
+            updateDownloadButton()
             card.addView(button(getString(R.string.choose_save_location), false) { chooseReportDestination() }, matchButton(10, 60))
             val destination = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) getString(R.string.reports_save_to_downloads_diplay) else getString(R.string.choose_where_to_save_your_report)
             card.addView(label(destination + getString(R.string.nothing_is_sent_automatically_protocol_payloads_and_creden), 14, MUTED).apply { setPadding(0, dp(12), 0, 0) })
@@ -1306,6 +1320,7 @@ class DiPlayActivity : ComponentActivity() {
             lastRunning = running
         }
         connectButton?.isEnabled = setupError == null
+        updateDownloadButton()
     }
     private fun reportFileName() = "MG4CPlay-${SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US).format(Date())}.txt"
 
@@ -1319,6 +1334,44 @@ class DiPlayActivity : ComponentActivity() {
         }
     }
 
+    /** The redacted diagnostic report; reads logs and files, so call it off the main thread. */
+    private fun buildDiagnosticReport(appContext: Context): String = buildString {
+        appendLine("MG4CPlay ${version()} · private beta diagnostic report")
+        appendLine("Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}")
+        appendLine("Head unit: ${Build.MANUFACTURER} ${Build.MODEL}")
+        appendLine("Connection: ${if (AirPlayPersistence.loadWirelessEnabled(appContext)) "wireless" else "USB"}")
+        appendLine("Authentication: local experimental beta identity; no remote fallback")
+        appendLine("CarPlay setup: ${if (setupError == null) "ready" else "authentication unavailable"}")
+        appendLine("Saved video preference (may differ from active session): ${if (AirPlayPersistence.loadHevcChoice(appContext) ?: Mg4FirmwareProfile.detect().isMg4) "HEVC" else "H.264"}; ${AirPlayPersistence.loadFps(appContext)} fps")
+        appendLine("CarPlay size: ${com.shilapi.xcertplay.airplay.CarPlaySize.fromWidthMillimeters(AirPlayPersistence.loadWidthPhysicalMm(appContext)).label}")
+        appendLine("Saved resolution preference (may differ from active session): ${AirPlayPersistence.loadDisplayScaleTenths(appContext) * 10}%")
+        appendLine("Session: ${if (CarPlayBackgroundSession.active) "active" else if (CarPlayBackgroundSession.hasSession()) "connecting" else "stopped"}")
+        appendLine("Head-unit board: ${Build.BOARD}; hardware: ${Build.HARDWARE}; build: ${Build.DISPLAY}")
+        appendLine()
+        appendLine("--- Last display negotiation (timestamps distinguish it from current settings) ---")
+        appendLine(DisplayDiagnosticSnapshot.report(appContext))
+        appendLine()
+        CrashRecorder.persisted(appContext)?.let { crash ->
+            appendLine("--- Last uncaught crash ---")
+            crash.lineSequence().forEach { line ->
+                DiagnosticRedactor.redact(line)?.let { appendLine(it) }
+            }
+            appendLine()
+        }
+        for (name in SessionLogFile.REPORT_NAMES) {
+            val file = File(appContext.filesDir, "logs/$name")
+            if (file.isFile) {
+                appendLine("--- $name ---")
+                file.useLines { lines -> lines.forEach { line -> DiagnosticRedactor.redact(line)?.let { appendLine(it) } } }
+            }
+        }
+        // Last, so the logs stay at the top of the file. MG4 only.
+        if (Mg4FirmwareProfile.detect().isMg4) {
+            appendLine()
+            SystemAppCodeExport.appendTo(this, appContext)
+        }
+    }
+
     private fun exportDiagnostics(uri: Uri? = null) {
         if (exportInProgress) return
         exportInProgress = true
@@ -1327,42 +1380,7 @@ class DiPlayActivity : ComponentActivity() {
         val fileName = reportFileName()
         Thread({
             val result = runCatching {
-                val report = buildString {
-                    appendLine("MG4CPlay ${version()} · private beta diagnostic report")
-                    appendLine("Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}")
-                    appendLine("Head unit: ${Build.MANUFACTURER} ${Build.MODEL}")
-                    appendLine("Connection: ${if (AirPlayPersistence.loadWirelessEnabled(appContext)) "wireless" else "USB"}")
-                    appendLine("Authentication: local experimental beta identity; no remote fallback")
-                    appendLine("CarPlay setup: ${if (setupError == null) "ready" else "authentication unavailable"}")
-                    appendLine("Saved video preference (may differ from active session): ${if (AirPlayPersistence.loadHevcChoice(appContext) ?: Mg4FirmwareProfile.detect().isMg4) "HEVC" else "H.264"}; ${AirPlayPersistence.loadFps(appContext)} fps")
-                    appendLine("CarPlay size: ${com.shilapi.xcertplay.airplay.CarPlaySize.fromWidthMillimeters(AirPlayPersistence.loadWidthPhysicalMm(appContext)).label}")
-                    appendLine("Saved resolution preference (may differ from active session): ${AirPlayPersistence.loadDisplayScaleTenths(appContext) * 10}%")
-                    appendLine("Session: ${if (CarPlayBackgroundSession.active) "active" else if (CarPlayBackgroundSession.hasSession()) "connecting" else "stopped"}")
-                    appendLine("Head-unit board: ${Build.BOARD}; hardware: ${Build.HARDWARE}; build: ${Build.DISPLAY}")
-                    appendLine()
-                    appendLine("--- Last display negotiation (timestamps distinguish it from current settings) ---")
-                    appendLine(DisplayDiagnosticSnapshot.report(appContext))
-                    appendLine()
-                    CrashRecorder.persisted(appContext)?.let { crash ->
-                        appendLine("--- Last uncaught crash ---")
-                        crash.lineSequence().forEach { line ->
-                            DiagnosticRedactor.redact(line)?.let { appendLine(it) }
-                        }
-                        appendLine()
-                    }
-                    for (name in SessionLogFile.REPORT_NAMES) {
-                        val file = File(appContext.filesDir, "logs/$name")
-                        if (file.isFile) {
-                            appendLine("--- $name ---")
-                            file.useLines { lines -> lines.forEach { line -> DiagnosticRedactor.redact(line)?.let { appendLine(it) } } }
-                        }
-                    }
-                    // Last, so the logs stay at the top of the file. MG4 only.
-                    if (Mg4FirmwareProfile.detect().isMg4) {
-                        appendLine()
-                        SystemAppCodeExport.appendTo(this, appContext)
-                    }
-                }
+                val report = buildDiagnosticReport(appContext)
                 if (uri != null) { DiagnosticExportStore.write(appContext.contentResolver, uri, report); uri }
                 else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     DiagnosticExportStore.saveToDownloads(appContext.contentResolver, fileName, report)
@@ -1395,6 +1413,119 @@ class DiPlayActivity : ComponentActivity() {
             }
         }, "diplay-export").start()
     }
+    /** The CarPlay Wi-Fi's IPv4 address while wireless CarPlay is connected; null in USB mode or offline. */
+    private fun reportDownloadAddress(): Inet4Address? {
+        if (!CarPlayBackgroundSession.active) return null
+        val info = CarPlayBackgroundSession.snapshot()?.controller?.activeHotspotInfo ?: return null
+        return ReportDownloadServer.bindAddress(info.hostAddress, info.interfaceName)
+    }
+
+    private fun updateDownloadButton() {
+        val button = downloadButton ?: return
+        val available = reportDownloadAddress() != null
+        button.isEnabled = available && !reportDownloadPreparing && reportDownload == null
+        button.text = getString(if (reportDownloadPreparing) R.string.preparing_report else R.string.download_to_iphone)
+        downloadHint?.visibility = if (available) View.GONE else View.VISIBLE
+    }
+
+    private fun startReportDownload() {
+        val address = reportDownloadAddress()
+        if (address == null || reportDownloadPreparing || reportDownload != null) return updateDownloadButton()
+        val controller = CarPlayBackgroundSession.snapshot()?.controller
+        reportDownloadPreparing = true
+        updateDownloadButton()
+        val appContext = applicationContext
+        val fileName = reportFileName()
+        Thread({
+            var server: ReportDownloadServer? = null
+            val result = runCatching {
+                val body = buildDiagnosticReport(appContext).toByteArray(Charsets.UTF_8)
+                ReportDownloadServer(address, fileName, body,
+                    log = { message -> Log.i("DiPlay", message); controller?.logDiagnostic(message) },
+                    onFinished = { outcome -> runOnUiThread { server?.let { onReportDownloadFinished(it, outcome) } } },
+                ).also { server = it }
+            }
+            runOnUiThread {
+                reportDownloadPreparing = false
+                val started = result.getOrNull()
+                if (isFinishing || isDestroyed) { started?.close(); return@runOnUiThread }
+                if (started == null) {
+                    Log.w("DiPlay", "Report download could not start", result.exceptionOrNull())
+                    updateDownloadButton()
+                    toast(getString(R.string.report_download_could_not_start))
+                    return@runOnUiThread
+                }
+                reportDownload = started
+                updateDownloadButton()
+                showReportDownload(started)
+                started.start()
+            }
+        }, "diplay-report-download").start()
+    }
+
+    private fun showReportDownload(server: ReportDownloadServer) {
+        val side = minOf(dp(380), (resources.displayMetrics.heightPixels * 0.55).toInt())
+        val qr = ImageView(this).apply {
+            setImageDrawable(BitmapDrawable(resources, qrBitmap(server.url, side)).apply { isFilterBitmap = false })
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = server.url
+        }
+        val status = label(getString(R.string.report_download_waiting), 16, TEXT, true).apply {
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        reportDownloadStatus = status
+        val body = column().apply {
+            setPadding(dp(28), dp(16), dp(28), dp(8))
+            addView(label(getString(R.string.download_to_iphone_hint), 16, MUTED))
+            addView(qr, LinearLayout.LayoutParams(side, side).apply { gravity = Gravity.CENTER_HORIZONTAL; topMargin = dp(16) })
+            addView(label(server.url, 15, TEXT).apply {
+                setTextIsSelectable(true); typeface = Typeface.MONOSPACE; gravity = Gravity.CENTER
+                setPadding(0, dp(12), 0, dp(8))
+            })
+            addView(status)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.download_to_iphone))
+            .setView(ScrollView(this).apply { addView(body) })
+            .setNegativeButton(getString(R.string.close), null)
+            .setOnDismissListener {
+                if (reportDownload === server) reportDownload = null
+                if (reportDownloadStatus === status) reportDownloadStatus = null
+                server.close()
+                updateDownloadButton()
+            }
+            .show()
+    }
+
+    private fun onReportDownloadFinished(server: ReportDownloadServer, outcome: ReportDownloadServer.Result) {
+        if (reportDownload === server) reportDownload = null
+        updateDownloadButton()
+        reportDownloadStatus?.text = when (outcome) {
+            ReportDownloadServer.Result.SERVED ->
+                getString(R.string.report_download_sent, android.text.format.Formatter.formatShortFileSize(this, server.size.toLong()))
+            ReportDownloadServer.Result.EXPIRED -> getString(R.string.report_download_expired)
+            ReportDownloadServer.Result.FAILED -> getString(R.string.report_download_failed)
+            ReportDownloadServer.Result.CLOSED -> return
+        }
+    }
+
+    /** Draws [text] as a QR code with the standard four-module quiet zone, in whole pixels per module. */
+    private fun qrBitmap(text: String, targetPx: Int): Bitmap {
+        val code = QrCode.encode(text)
+        val modules = code.size + 8
+        val scale = maxOf(1, targetPx / modules)
+        val side = modules * scale
+        val pixels = IntArray(side * side) { Color.WHITE }
+        for (y in 0 until code.size) for (x in 0 until code.size) {
+            if (!code.isDark(x, y)) continue
+            for (dy in 0 until scale) {
+                val row = ((y + 4) * scale + dy) * side + (x + 4) * scale
+                pixels.fill(Color.BLACK, row, row + scale)
+            }
+        }
+        return Bitmap.createBitmap(pixels, side, side, Bitmap.Config.ARGB_8888)
+    }
+
     private fun permissionHelp(title: String, body: String) {
         AlertDialog.Builder(this).setTitle(title).setMessage(body).setPositiveButton(getString(R.string.app_settings)) { _, _ ->
             openSystem(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))

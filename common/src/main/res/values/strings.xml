@@ -374,6 +374,15 @@
     <string name="save_your_hotspot_details_in_connection_setup_first">Save your hotspot details in Connection setup first</string>
     <string name="saved_for_your_next_connection">Saved for your next connection</string>
     <string name="saving_report">Saving report…</string>
+    <string name="download_to_iphone">Download to iPhone</string>
+    <string name="preparing_report">Preparing report…</string>
+    <string name="download_to_iphone_unavailable">Download to iPhone works while wireless CarPlay is connected: the iPhone fetches the report from the car over that Wi-Fi.</string>
+    <string name="download_to_iphone_hint">Scan with the iPhone camera and open the link. Safari downloads the report; open it from Downloads to AirDrop it or save it to Files. The link works once and stops after 5 minutes or when you close this.</string>
+    <string name="report_download_waiting">Waiting for the iPhone…</string>
+    <string name="report_download_sent">Sent to the iPhone (%1$s). You can close this.</string>
+    <string name="report_download_expired">This link has expired. Close this and tap Download to iPhone again.</string>
+    <string name="report_download_failed">The download stopped. Check that the iPhone is still on the car\'s Wi-Fi and try again.</string>
+    <string name="report_download_could_not_start">Could not prepare the report for the iPhone. Check that wireless CarPlay is still connected and try again.</string>
     <string name="security">Security</string>
     <string name="selecting_carplay_configuration">Selecting CarPlay configuration</string>
     <string name="sends_precise_android_location_as_carplay_gps_data_when_th">Sends precise Android location as CarPlay GPS data when the iPhone requests it.</string>

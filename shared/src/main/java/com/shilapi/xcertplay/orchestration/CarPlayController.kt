@@ -230,6 +230,10 @@ class CarPlayController(
         activeSession?.sendRemoteControlMessage(streamId, message) ?: false
 
     @Volatile private var hotspot: WirelessHotspotManager? = null
+
+    /** The wireless CarPlay network this controller has up, or null in USB mode or before it starts. */
+    @Volatile var activeHotspotInfo: WirelessHotspotInfo? = null
+        private set
     @Volatile private var bonjour: CarPlayBonjour? = null
     @Volatile private var bluetoothSocket: BluetoothSocket? = null
     @Volatile private var bluetoothStream: BluetoothRfcommDuplexStream? = null
@@ -1863,7 +1867,7 @@ class CarPlayController(
             HOTSPOT_START_TIMEOUT_MILLIS
         }
         return try {
-            manager.start(timeoutMillis)
+            manager.start(timeoutMillis).also { if (hotspot === manager) activeHotspotInfo = it }
         } catch (failure: Exception) {
             if (hotspot === manager) hotspot = null
             closeBestEffort(hotspotMode.name) { manager.close() }
@@ -2015,6 +2019,7 @@ class CarPlayController(
 
         val activeHotspot = hotspot
         hotspot = null
+        activeHotspotInfo = null
         if (activeHotspot != null) closeBestEffort("wireless hotspot") { activeHotspot.close() }
         wirelessIdentification = null
         wirelessAirPlayEndpoint = null
@@ -2397,6 +2402,9 @@ class CarPlayController(
         onStatus(CarPlayStatus.Failed(error.message ?: error.javaClass.simpleName,
             generateSequence(error) { it.cause }.any { it is com.shilapi.xcertplay.network.P2pResetRequiredException }))
     }
+
+    /** Writes a line from outside the controller to this session's diagnostic log. */
+    fun logDiagnostic(message: String) = debugLog(message)
 
     private fun debugLog(message: String) {
         // Protocol traces can arrive once per touch/event frame. Writing every one to logcat on
