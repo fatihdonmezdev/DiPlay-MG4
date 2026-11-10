@@ -21,6 +21,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import com.evsuite.hardware.saic.SaicMediaPlayer
+import com.saicmotor.common.CommandParcelable
 import com.shilapi.xcertplay.shared.R
 import com.shilapi.xcertplay.airplay.AirPlayConfig
 import com.shilapi.xcertplay.airplay.AirPlayContact
@@ -1274,15 +1275,18 @@ class CarPlayController(
     }
 
     /**
-     * Puts the car on its Bluetooth Music source, the way the SAIC launcher's music card does.
+     * Puts the car on its Bluetooth Music source, matching the Mg4-Launcher-SWI69 logic.
      *
      * In hybrid mode the phone's audio arrives over the factory A2DP link, so a car still
      * sitting on Radio after start-up plays nothing until the driver switches the source by
-     * hand. Mirroring the launcher's `requestBtAudioFocus` removes that step.
+     * hand.
      *
-     * The car refuses the switch while no device holds A2DP, so this waits for the profile
-     * and tells the driver where to fix it if the phone never connects. Both the bind and
-     * the handover land asynchronously, hence the retries.
+     * In SWI69 / A9 head units, the launcher switches source to Bluetooth and starts playback by:
+     * 1. Sending CommandParcelable(SWITCH_SOURCE_PLAY, TYPE_BT_MUSIC, "com.saicmotor.launcher")
+     *    via startService to com.saicmotor.media/.service.MediaService
+     * 2. Also attempting SaicMediaPlayer.command(PLAY_PAUSE) or MediaSession play if available.
+     *
+     * We do not launch the Bluetooth settings page here; the connection tab in DiPlay handles that.
      */
     private fun switchCarSourceToBluetooth() {
         val adapter = bluetoothAdapter
@@ -1290,40 +1294,43 @@ class CarPlayController(
             debugLog("car source: Bluetooth adapter unavailable; leaving source alone")
             return
         }
-        if (!hasBluetoothAudioDevice(adapter)) {
-            debugLog("car source: no A2DP device connected; prompting the driver")
-            promptConnectBluetoothForAudio()
-            return
-        }
-        SaicMediaPlayer.connectBluetooth(appContext)
+
+        debugLog("car source: switching source to BT Music and starting play")
+        sendSaicMediaBtSwitch(CommandParcelable.SWITCH_SOURCE_PLAY)
+        SaicMediaPlayer.connect(appContext)
+
         repeat(SOURCE_SWITCH_ATTEMPTS) { attempt ->
             if (closed || phase != Phase.WIRELESS) return
-            if (SaicMediaPlayer.switchToBluetooth()) {
-                debugLog("car source: switched to BT Music (attempt ${attempt + 1})")
+            val sent = sendSaicMediaBtSwitch(CommandParcelable.SWITCH_SOURCE_PLAY)
+            val mediaResumed = runCatching { SaicMediaPlayer.playPause() }.getOrDefault(false)
+            if (sent || mediaResumed) {
+                debugLog("car source: switched to BT Music (attempt ${attempt + 1}, serviceSent=$sent, mediaResumed=$mediaResumed)")
                 return
             }
             Thread.sleep(SOURCE_SWITCH_RETRY_MILLIS)
         }
-        debugLog("car source: BT Music service never answered; source left unchanged")
     }
 
-    private fun hasBluetoothAudioDevice(adapter: BluetoothAdapter): Boolean =
-        connectedBluetoothDevices(adapter, BluetoothProfile.A2DP, BluetoothA2dp::class.java)
-            .isNotEmpty()
-
-    private fun promptConnectBluetoothForAudio() {
-        mainHandler.post {
-            runCatching {
-                Toast.makeText(
-                    appContext,
-                    appContext.getString(R.string.connect_bluetooth_for_audio),
-                    Toast.LENGTH_LONG,
-                ).show()
-                appContext.startActivity(
-                    Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    private fun sendSaicMediaBtSwitch(event: Int): Boolean {
+        return try {
+            val intent = Intent().apply {
+                component = ComponentName("com.saicmotor.media", "com.saicmotor.media.service.MediaService")
+                setPackage("com.saicmotor.media")
+                putExtra(
+                    "command",
+                    CommandParcelable(
+                        event,
+                        CommandParcelable.TYPE_BT_MUSIC,
+                        "com.saicmotor.launcher",
+                    ),
                 )
-            }.onFailure { error -> debugLog("car source: Bluetooth settings unavailable: $error") }
+            }
+            val ok = appContext.startService(intent) != null
+            debugLog("car source: MediaService command (event $event): ${if (ok) "sent" else "service not found"}")
+            ok
+        } catch (e: Exception) {
+            debugLog("car source: MediaService command failed: ${e.javaClass.simpleName} - ${e.message}")
+            false
         }
     }
 

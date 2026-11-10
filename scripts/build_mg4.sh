@@ -26,7 +26,7 @@ if [ ! -f "$KEYS/platform.pk8" ]; then
   exit 1
 fi
 OUT="$ROOT/mobile/build/outputs/apk/debug/mobile-debug.apk"
-VERSION="0.2.9-mg4.61"
+VERSION="0.2.9-mg4.62"
 ALIGNED="$ROOT/mobile/build/outputs/apk/debug/MG4CPlay-v$VERSION-aligned.apk"
 SIGNED="$ROOT/mobile/build/outputs/apk/debug/MG4CPlay-v$VERSION.apk"
 DELIVERY_DIR=$(CDPATH= cd -- "$ROOT/.." && pwd)
